@@ -179,12 +179,11 @@ def main():
                     if w > 256 or h > 256:
                         crop_image(tgapath)
                         tga_to_dds(os.path.join(dirpath, os.path.basename(tgapath)[:-4], '*.tga'))
-                        blockInfos = dds_to_tex(os.path.join(dirpath, os.path.basename(tgapath)[:-4]))
+                        image['blocks'] = dds_to_tex(os.path.join(dirpath, os.path.basename(tgapath)[:-4]))
                     else:
                         tga_to_dds(tgapath)
-                        dds_to_tex(tgapath)
+                        dds_to_tex(tgapath.replace('.tga', '.dds'))
                     image['image'] = imageInfo
-                    image['blocks'] = blockInfos
                     images.append(image)
                 bin.frames[index] = images
             save_bin(bin, os.path.join(dirPath, "info.bin"))
