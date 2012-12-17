@@ -1,6 +1,5 @@
 #coding=gbk
 import os
-import sys
 import subprocess
 import zlib
 import struct
@@ -18,7 +17,7 @@ ImageInfo = namedtuple('ImageInfo',
     blockX
     blockY
     """)
-ImageInfo.struct_format = '4H2h2H'
+ImageInfo.struct_format = '8H'
 
 BlockInfo = namedtuple('BlockInfo',
     """
@@ -28,26 +27,30 @@ BlockInfo = namedtuple('BlockInfo',
     """)
 BlockInfo.struct_format = '2HI'
 
-PF_A8R8G8B8	= 21
-PF_DXT1	= 827611204
-PF_DXT5	= 894720068
+PF_A8R8G8B8 = 21
+PF_DXT1 = 827611204
+PF_DXT3 = 861165636
+PF_DXT5 = 894720068
 
 resPath = "res"
 
-def tga_to_dds(files, format="dxt1"):
+def tga_to_dds(files, format="dxt3"):
     if format in ['dxt1', 'dxt2', 'dxt3', 'dxt4', 'dxt5']:
         os.system("texconv.exe -m 1 -f {0} {1} -o {2}".format(format, files, os.path.dirname(files)))
+
 
 def get_size(filename):
     output = subprocess.check_output("identify.exe -format %w,%h {0}".format(filename))
     width, height = output.split(',')
     return int(width), int(height)
 
+
 def get_offset(path):
     with open(path, 'rb') as f:
         f.seek(3)
-        offset_x, offset_y = struct.unpack('2h', f.read(4))
+        offset_x, offset_y = struct.unpack('2H', f.read(4))
     return offset_x, offset_y
+
 
 def crop_image(filename):
     if not os.path.exists(filename):
@@ -57,14 +60,28 @@ def crop_image(filename):
         os.makedirs(dirname)
     os.system("convert -crop 256x256 {0} {1}\\%02d.tga".format(filename, dirname))
 
+
 def dds_to_tex(path):
     if path.endswith('.dds'):
+        buffer = ''
+        blockInfos = []
+        w, h = get_size(path)
         with open(path, 'rb') as ddsfd:
             ddsfd.seek(128)
-            buffer = zlib.compress(ddsfd.read())
-        with open(path.replace('.dds','.tex'),'wb') as texfd:
+            blockData = zlib.compress(ddsfd.read())
+            blockInfo = BlockInfo(
+                width=w,
+                height=h,
+                len=len(blockData))
+            buffer += blockData
+        blockInfos.append(blockInfo)
+        with open(path.replace('.dds', '.tex'), 'wb') as texfd:
             texfd.write(buffer)
-    elif os.path.isdir(path):
+        return blockInfos
+
+
+def folder_to_tex(path):
+    if os.path.isdir(path):
         buffer = ''
         blockInfos = []
         for ddsfile in os.listdir(path):
@@ -75,27 +92,26 @@ def dds_to_tex(path):
                 ddsfd.seek(128)
                 blockData = zlib.compress(ddsfd.read())
                 blockInfo = BlockInfo(
-                    width = w,
-                    height = h,
-                    len = len(blockData))
+                    width=w,
+                    height=h,
+                    len=len(blockData))
                 buffer += blockData
             blockInfos.append(blockInfo)
         texfile = "{0}\\{1}.tex".format(os.path.abspath(os.path.join(path, os.path.pardir)), os.path.basename(path))
         with open(texfile, 'wb') as texfd:
             texfd.write(buffer)
         return blockInfos
-    else:
-        raise '参数1必须为dds文件名或包含dds文件的目录名'
+
 
 def load_bin(path):
     bin = namedtuple('InfoBin', 'imageFormat frameNum frames')
-    bin.imageFormat = PF_DXT1
+    bin.imageFormat = PF_DXT3
     bin.frameNum = 0
     bin.frames = {}
     if os.path.exists(path):
         with open(path, 'rb') as f:
             bin.imageFormat = struct.unpack('I', f.read(struct.calcsize('I')))[0]
-            assert bin.imageFormat == PF_A8R8G8B8 or bin.imageFormat == PF_DXT1 or bin.imageFormat == PF_DXT5
+            assert bin.imageFormat == PF_A8R8G8B8 or bin.imageFormat == PF_DXT1 or bin.imageFormat == PF_DXT3 or bin.imageFormat == PF_DXT5
             bin.frameNum = struct.unpack('I', f.read(struct.calcsize('I')))[0]
             for i in range(bin.frameNum):
                 imageNum = struct.unpack('I', f.read(struct.calcsize('I')))[0]
@@ -115,6 +131,7 @@ def load_bin(path):
                 bin.frames[str(index)] = images
     return bin
 
+
 def save_bin(binData, path):
     with open(path, 'wb') as f:
         f.write(struct.pack('I', binData.imageFormat))
@@ -127,10 +144,11 @@ def save_bin(binData, path):
                 imageInfo = binData.frames[index][i]['image']
                 f.write(struct.pack(ImageInfo.struct_format, *imageInfo))
                 blockNum = imageInfo.blockX * imageInfo.blockY
-                if blockNum > 1:
+                if blockNum >= 1:
                     blockInfos = binData.frames[index][i]['blocks']
                     for j in range(blockNum):
                         f.write(struct.pack(BlockInfo.struct_format, *blockInfos[j]))
+
 
 def compress_file(path):
     if os.path.exists(path):
@@ -139,12 +157,14 @@ def compress_file(path):
         with open(path, 'wb') as f:
             f.write(buffer)
 
+
 def decompress_file(path):
     if os.path.exists(path):
         with open(path, 'rb') as f:
             buffer = zlib.decompress(f.read())
         with open(path, 'wb') as f:
             f.write(buffer)
+
 
 def main():
     for dir in os.listdir(resPath):
@@ -161,28 +181,28 @@ def main():
                     if not filename.endswith('.tga'):
                         continue
                     if os.path.exists(os.path.join(dirpath, filename.replace('.tga', '.tex')))\
-                        and index in bin.frames:
+                    and index in bin.frames:
                         continue
                     image = {}
                     tgapath = os.path.join(dirpath, filename)
                     w, h = get_size(tgapath)
                     offset_x, offset_y = get_offset(tgapath)
                     imageInfo = ImageInfo(
-                    width = w - offset_x,
-                    height = h - offset_y,
-                    dataWidth = w,
-                    dataHeight = h,
-                    offsetX = offset_x,
-                    offsetY = offset_y,
-                    blockX = int(math.ceil(w/256.0)) if w > 256 else 1,
-                    blockY = int(math.ceil(h/256.0)) if h > 256 else 1)
+                        width=w + offset_x,
+                        height=h + offset_y,
+                        dataWidth=w,
+                        dataHeight=h,
+                        offsetX=offset_x,
+                        offsetY=offset_y,
+                        blockX=int(math.ceil(w / 256.0)) if w > 256 else 1,
+                        blockY=int(math.ceil(h / 256.0)) if h > 256 else 1)
                     if w > 256 or h > 256:
                         crop_image(tgapath)
                         tga_to_dds(os.path.join(dirpath, os.path.basename(tgapath)[:-4], '*.tga'))
-                        image['blocks'] = dds_to_tex(os.path.join(dirpath, os.path.basename(tgapath)[:-4]))
+                        image['blocks'] = folder_to_tex(os.path.join(dirpath, os.path.basename(tgapath)[:-4]))
                     else:
                         tga_to_dds(tgapath)
-                        dds_to_tex(tgapath.replace('.tga', '.dds'))
+                        image['blocks'] = dds_to_tex(tgapath.replace('.tga', '.dds'))
                     image['image'] = imageInfo
                     images.append(image)
                 bin.frames[index] = images
