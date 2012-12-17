@@ -41,9 +41,8 @@ def tga_to_dds(files, format="dxt3"):
 
 def get_size(filename):
     output = subprocess.check_output("identify.exe -format %w,%h {0}".format(filename))
-    width, height = output.split(',')
-    return int(width), int(height)
-
+    result = map(int, output.split(','))
+    return result
 
 def get_offset(path):
     with open(path, 'rb') as f:
