@@ -48,7 +48,7 @@ def get_size(filename):
 def get_offset(path):
     with open(path, 'rb') as f:
         f.seek(3)
-        offset_x, offset_y = struct.unpack('2H', f.read(4))
+        offset_x, offset_y = struct.unpack('2H', f.read(struct.calcsize('2H')))
     return offset_x, offset_y
 
 
