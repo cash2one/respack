@@ -23,10 +23,10 @@ def process_scene(path):
                 destFile = os.path.join(destPath, '{0:05d}.tga'.format(index + 1))
                 shutil.copyfile(os.path.join(dirPath, name), destFile)
                 if resType == 'µØ±í':
-                    os.system("convert -crop 0x256 {0} {1}%02d.tga".format(destFile, os.path.splitext(destFile)[0]))
+                    os.system("convert -crop 0x128 {0} {1}%02d.tga".format(destFile, os.path.splitext(destFile)[0]))
                     os.remove(destFile)
                     for file in glob.glob(os.path.join(destPath, "{0:05d}*.tga".format(index + 1))):
-                        os.system("convert -crop 256x0 {0} {1}%02d.tga".format(file, os.path.splitext(file)[0]))
+                        os.system("convert -crop 128x0 {0} {1}%02d.tga".format(file, os.path.splitext(file)[0]))
                         os.remove(file)
                     move_images(os.path.join(destPath, '*.tga'))
                 else:
