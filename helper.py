@@ -63,7 +63,7 @@ def trim_image(path):
 def move_images(path):
     for file in glob.glob(path):
         os.mkdir(file[:-4])
-        shutil.move(file, '{0}\\000000001{1}'.format(file[:-4], file[-4:]))
+        shutil.move(file, '{0}\\000001{1}'.format(file[:-4], file[-4:]))
 
 def multi_get_letter(str_input):
     if isinstance(str_input, unicode):
