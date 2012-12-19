@@ -1,2 +1,2 @@
-@rescutter.py scene
+@cutter.py scene
 @pause
