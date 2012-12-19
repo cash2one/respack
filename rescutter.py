@@ -30,7 +30,7 @@ def process_scene(path):
                         os.remove(file)
                     move_images(os.path.join(destPath, '*.tga'))
                 else:
-                    os.system("convert -crop 64x0 {0} {1}%02d00.tga".format(destFile, os.path.splitext(destFile)[0]))
+                    os.system("convert -crop 64x0 {0} {1}%04d.tga".format(destFile, os.path.splitext(destFile)[0]))
                     os.remove(destFile)
                     for file in glob.glob(os.path.join(destPath, "{0:05d}*.tga".format(index + 1))):
                         pngFile = file.replace('.tga', '.png')
@@ -39,6 +39,12 @@ def process_scene(path):
                         os.remove(file)
                     move_images(os.path.join(destPath, '*.png'))
 
+actionTuple = ('³öÉú',)
+def process_character(path):
+    pass
+
+def process_magic(path):
+    pass
 
 def useage():
     print "Usage: rescutter.py [scene|char|magic|weapon|all]"
