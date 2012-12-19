@@ -4,6 +4,7 @@ import os
 import zlib
 import struct
 import math
+import zipfile
 from collections import namedtuple
 from helper import *
 
@@ -126,6 +127,12 @@ def save_bin(binData, path):
                     for j in range(blockNum):
                         f.write(struct.pack(BlockInfo.struct_format, *blockInfos[j]))
 
+def pack_res():
+    with zipfile.ZipFile('res.zip', 'w') as reszip:
+        for base, dirs, files in os.walk(RES):
+            for file in files:
+                if file.endswith('.tex') or file.endswith('.bin'):
+                    reszip.write(os.path.join(base, file))
 
 def main():
     for dir in filter(lambda dir:os.path.isdir(os.path.join(RES, dir)), os.listdir(RES)):
@@ -171,6 +178,6 @@ def main():
             bin.frames[index] = images
         save_bin(bin, os.path.join(resPath, "info.bin"))
         compress_file(os.path.join(resPath, "info.bin"))
-
+        pack_res()
 if __name__ == '__main__':
     main()
