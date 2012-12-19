@@ -1,0 +1,1 @@
+python rescutter.py scene

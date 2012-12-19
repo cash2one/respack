@@ -1,10 +1,11 @@
 #coding=gbk
+__author__ = 'harmy'
 import os
-import subprocess
 import zlib
 import struct
 import math
 from collections import namedtuple
+from helper import *
 
 ImageInfo = namedtuple('ImageInfo',
     """
@@ -32,32 +33,9 @@ PF_DXT1 = 827611204
 PF_DXT3 = 861165636
 PF_DXT5 = 894720068
 
-resPath = "res"
-
-def tga_to_dds(files, format="dxt3"):
+def to_dds(files, format="dxt3"):
     if format in ['dxt1', 'dxt2', 'dxt3', 'dxt4', 'dxt5']:
         os.system("texconv.exe -m 1 -f {0} {1} -o {2}".format(format, files, os.path.dirname(files)))
-
-
-def get_size(filename):
-    output = subprocess.check_output("identify.exe -format %w,%h {0}".format(filename))
-    result = map(int, output.split(','))
-    return result
-
-def get_offset(path):
-    with open(path, 'rb') as f:
-        f.seek(3)
-        offset_x, offset_y = struct.unpack('2H', f.read(struct.calcsize('2H')))
-    return offset_x, offset_y
-
-
-def crop_image(filename):
-    if not os.path.exists(filename):
-        return
-    dirname = filename[:-4]
-    if not os.path.exists(dirname):
-        os.makedirs(dirname)
-    os.system("convert -crop 256x256 {0} {1}\\%02d.tga".format(filename, dirname))
 
 
 def dds_to_tex(path):
@@ -149,64 +127,48 @@ def save_bin(binData, path):
                         f.write(struct.pack(BlockInfo.struct_format, *blockInfos[j]))
 
 
-def compress_file(path):
-    if os.path.exists(path):
-        with open(path, 'rb') as f:
-            buffer = zlib.compress(f.read())
-        with open(path, 'wb') as f:
-            f.write(buffer)
-
-
-def decompress_file(path):
-    if os.path.exists(path):
-        with open(path, 'rb') as f:
-            buffer = zlib.decompress(f.read())
-        with open(path, 'wb') as f:
-            f.write(buffer)
-
-
 def main():
-    for dir in os.listdir(resPath):
-        dirPath = os.path.join(resPath, dir)
-        if os.path.isdir(dirPath):
-            decompress_file(os.path.join(dirPath, "info.bin"))
-            bin = load_bin(os.path.join(dirPath, "info.bin"))
-            for (dirpath, dirnames, filenames) in os.walk(dirPath):
-                if len(dirpath.split(os.sep)) != 3:
+    for dir in filter(lambda dir:os.path.isdir(os.path.join(RES, dir)), os.listdir(RES)):
+        resPath = os.path.join(RES, dir)
+        decompress_file(os.path.join(resPath, "info.bin"))
+        bin = load_bin(os.path.join(resPath, "info.bin"))
+        for (dirPath, dirNames, fileNames) in os.walk(resPath):
+            if len(dirPath.split(os.sep)) != 3:
+                continue
+            index = dirPath.split(os.sep)[-1].lstrip('0')
+            images = bin.frames[index] if index in bin.frames else []
+            for fileName in fileNames:
+                fileExt = os.path.splitext(fileName)[1]
+                if not fileExt in ['.tga', '.png']:
                     continue
-                index = dirpath.split(os.sep)[-1].lstrip('0')
-                images = bin.frames[index] if index in bin.frames else []
-                for filename in filenames:
-                    if not filename.endswith('.tga'):
-                        continue
-                    if os.path.exists(os.path.join(dirpath, filename.replace('.tga', '.tex')))\
-                    and index in bin.frames:
-                        continue
-                    image = {}
-                    tgapath = os.path.join(dirpath, filename)
-                    w, h = get_size(tgapath)
-                    offset_x, offset_y = get_offset(tgapath)
-                    imageInfo = ImageInfo(
-                        width=w + offset_x,
-                        height=h + offset_y,
-                        dataWidth=w,
-                        dataHeight=h,
-                        offsetX=offset_x,
-                        offsetY=offset_y,
-                        blockX=int(math.ceil(w / 256.0)) if w > 256 else 1,
-                        blockY=int(math.ceil(h / 256.0)) if h > 256 else 1)
-                    if w > 256 or h > 256:
-                        crop_image(tgapath)
-                        tga_to_dds(os.path.join(dirpath, os.path.basename(tgapath)[:-4], '*.tga'))
-                        image['blocks'] = folder_to_tex(os.path.join(dirpath, os.path.basename(tgapath)[:-4]))
-                    else:
-                        tga_to_dds(tgapath)
-                        image['blocks'] = dds_to_tex(tgapath.replace('.tga', '.dds'))
-                    image['image'] = imageInfo
-                    images.append(image)
-                bin.frames[index] = images
-            save_bin(bin, os.path.join(dirPath, "info.bin"))
-            compress_file(os.path.join(dirPath, "info.bin"))
+                if os.path.exists(os.path.join(dirPath, fileName.replace(fileExt, '.tex')))\
+                and index in bin.frames:
+                    continue
+                image = {}
+                imagePath = os.path.join(dirPath, fileName)
+                w, h = get_size(imagePath)
+                offset_x, offset_y = get_offset(imagePath)
+                imageInfo = ImageInfo(
+                    width=w + offset_x,
+                    height=h + offset_y,
+                    dataWidth=w,
+                    dataHeight=h,
+                    offsetX=offset_x,
+                    offsetY=offset_y,
+                    blockX=int(math.ceil(w / 256.0)) if w > 256 else 1,
+                    blockY=int(math.ceil(h / 256.0)) if h > 256 else 1)
+                if w > 256 or h > 256:
+                    crop_image(imagePath)
+                    to_dds(os.path.join(dirPath, os.path.basename(imagePath)[:-4], '*{}'.format(fileExt)))
+                    image['blocks'] = folder_to_tex(os.path.join(dirPath, os.path.basename(imagePath)[:-4]))
+                else:
+                    to_dds(imagePath)
+                    image['blocks'] = dds_to_tex(imagePath.replace(fileExt, '.dds'))
+                image['image'] = imageInfo
+                images.append(image)
+            bin.frames[index] = images
+        save_bin(bin, os.path.join(resPath, "info.bin"))
+        compress_file(os.path.join(resPath, "info.bin"))
 
 if __name__ == '__main__':
     main()
