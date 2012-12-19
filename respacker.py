@@ -147,10 +147,12 @@ def main():
                 image = {}
                 imagePath = os.path.join(dirPath, fileName)
                 w, h = get_size(imagePath)
-                offset_x, offset_y = get_offset(imagePath)
+                raw_width, raw_height, offset_x, offset_y = get_rawsize_offset(imagePath)
+                if offset_x < 0 or offset_y < 0:
+                    continue
                 imageInfo = ImageInfo(
-                    width=w + offset_x,
-                    height=h + offset_y,
+                    width=raw_width if raw_width else w + offset_x,
+                    height=raw_height if raw_height else h + offset_y,
                     dataWidth=w,
                     dataHeight=h,
                     offsetX=offset_x,

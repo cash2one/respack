@@ -7,6 +7,8 @@ import subprocess
 import zlib
 import re
 
+pattern = re.compile(r'(\d+)x(\d+)([\+\-]\d+)([\+\-]\d+)')
+
 SRC = 'src'
 RES = 'res'
 
@@ -32,19 +34,25 @@ def get_size(filename):
     return result
 
 
-def get_offset(path):
+def get_rawsize(filename):
+    output = subprocess.check_output("identify.exe -format %g {0}".format(filename))
+    result = map(int, output.split(','))
+    return result
+
+def get_rawsize_offset(path):
     if not os.path.exists(path):
-        return (0, 0)
+        return (0,) * 4
     if path.endswith('.tga'):
         with open(path, 'rb') as f:
             f.seek(3)
             offset_x, offset_y = struct.unpack('2H', f.read(struct.calcsize('2H')))
+            raw_width, raw_height = 0, 0
     elif path.endswith('.png'):
         output = subprocess.check_output("identify.exe -format %g {0}".format(path))
-        offset_x, offset_y = map(int, re.split('[+-]', output)[-2:])
+        raw_width, raw_height, offset_x, offset_y = [int(item) for item in pattern.search(output).groups()]
     else:
-        offset_x, offset_y = 0, 0
-    return offset_x, offset_y
+        raw_width, raw_height, offset_x, offset_y = (0,) * 4
+    return raw_width, raw_height, offset_x, offset_y
 
 
 def crop_image(filename):
