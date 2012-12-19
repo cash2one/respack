@@ -1,1 +1,2 @@
-python rescutter.py scene
+@rescutter.py scene
+@pause
