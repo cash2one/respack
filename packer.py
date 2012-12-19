@@ -101,10 +101,9 @@ def load_bin(path):
                         f.read(struct.calcsize(ImageInfo.struct_format))))
                     image['image'] = imageInfo
                     blockNum = imageInfo.blockX * imageInfo.blockY
-                    if blockNum > 1:
-                        blocks = [BlockInfo(*struct.unpack(BlockInfo.struct_format,
-                            f.read(struct.calcsize(BlockInfo.struct_format)))) for k in range(blockNum)]
-                        image['blocks'] = blocks
+                    blocks = [BlockInfo(*struct.unpack(BlockInfo.struct_format,
+                        f.read(struct.calcsize(BlockInfo.struct_format)))) for k in range(blockNum)]
+                    image['blocks'] = blocks
                     images.append(image)
                 bin.frames[str(index)] = images
     return bin
