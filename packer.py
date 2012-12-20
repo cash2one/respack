@@ -126,11 +126,11 @@ def save_bin(binData, path):
                     for j in range(blockNum):
                         f.write(struct.pack(BlockInfo.struct_format, *blockInfos[j]))
 
-def pack_res():
-    with zipfile.ZipFile('res.zip', 'w') as reszip:
+def pack_res(path, exts = ['.tex', '.bin', '.per']):
+    with zipfile.ZipFile(path, 'w') as reszip:
         for base, dirs, files in os.walk(RES):
             for file in files:
-                if file.endswith('.tex') or file.endswith('.bin'):
+                if file[-4:] in exts:
                     reszip.write(os.path.join(base, file))
 
 def main():
@@ -177,6 +177,6 @@ def main():
             bin.frames[index] = images
         save_bin(bin, os.path.join(resPath, "info.bin"))
         compress_file(os.path.join(resPath, "info.bin"))
-        pack_res()
+        pack_res('res.zip')
 if __name__ == '__main__':
     main()
