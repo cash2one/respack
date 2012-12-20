@@ -1,0 +1,77 @@
+图像类型枚举值：
+PF_A8R8G8B8	= 21,
+PF_DXT1		= 827611204,
+PF_DXT3 = 861165636
+PF_DXT5		= 894720068,
+
+用到的数据结构(C++语言)：
+struct IMAGE_INFO
+{
+	WORD	width;		//原始宽度(无符号)
+	WORD	height;		//原始高度(无符号)
+	WORD	dataWidth;	//切后的宽度(无符号)
+	WORD	dataHeight;	//切后的高度(无符号)
+	WORD	offsetX;	//X偏移(有符号)
+	WORD	offsetY;	//Y偏移(有符号)
+	WORD	blockX;		//水平块数(无符号)
+	WORD	blockY;		//垂直块数 (无符号)
+};
+
+struct BLOCK_INFO
+{
+	WORD	width;		//块的宽(无符号)
+	WORD	height;		//块的高(无符号)
+	DWORD	len;		//块压缩后的数据长度(无符号)
+};
+
+目录结构:
+PackFile(图包文件夹)
+|- Frame1(1级文件夹)
+      |- Image1(2级文件夹)
+      |- Image2(2级文件夹)
+      ......
+|- Frame2(1级文件夹)
+      |- Image1(2级文件夹)
+      |- Image2(2级文件夹)
+      ......
+......
+
+注意：一个Image需要切割成256*256的单个Block，每个image需要保证宽高是4的倍数
+
+文件格式:
+字段名		说明				大小
+Format		[包的图像类型]			4字节
+FrameNum	[Frame(1级文件夹)总数]		4字节
+OffsetTab	每个Frame的偏移地址		FrameNum * 4字节
+
+ImageNum	当前image的数量			4字节
+index		当前图片目录索引		4字节
+IMAGE_INFO	image信息组			ImageNum * 16字节
+BLOCK_INFO	block信息组			blockX * blockY * 8字节
+
+...
+
+ImageNum	当前image的数量			4字节
+IMAGE_INFO	image信息组			ImageNum * 16字节
+BLOCK_INFO	block信息组			blockX * blockY * 8字节
+
+
+伪代码：
+write_dword(Format)
+write_dword(FrameNum)
+write_array(OffsetTab)
+for (frameIndex=0; frameIndex<FrameNum; frameIndex++) 
+{
+	// 此处写入frame的image数量，同时记录偏移地址(从文件的头指针开始算起)，放入OffsetTab
+	write_dword(ImageNum)
+	write_dword(index)
+	for (ImageIndex=0; ImageIndex<ImageNum; ImageIndex++) 
+	{
+		write_struct(IMAGE_INFO)
+		for (BlockIndex=0; BlockIndex<(blockX * blockY); BlockIndex++) 
+		{
+			write_struct(BLOCK_INFO)
+		}
+	}
+}
+
