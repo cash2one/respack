@@ -104,7 +104,7 @@ def export_per_file(path):
                 for directInfo in actionInfo.directs.values():
                     f.write(struct.pack('I', len(directInfo.images)))
                     for imageIndex in directInfo.images:
-                        f.write(imageIndex)
+                        f.write(struct.pack('I',int(imageIndex)))
 
 def useage():
     print "Usage: cutter.py [scene|char|magic|weapon]"
