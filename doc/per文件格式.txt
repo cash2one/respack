@@ -7,6 +7,24 @@ dirCount 4 方向数
 imagecount 4 帧数
 imageindex 4 图片索引
 
+PersonInfo = namedtuple('PersonInfo','name actions')
+ActionInfo = namedtuple('ActionInfo', 'imagePackName actionIndex directs')
+DirectionInfo = namedtuple('DirectionInfo','images')
+personInfos = {}
+def export_per_file(path):
+    with open(path, 'wb') as f:
+        f.write(struct.pack('I', len(personInfos)))
+        for personInfo in personInfos.values():
+            f.write(struct.pack('32s', personInfo.name))
+            f.write(struct.pack('I', len(personInfo.actions)))
+            for actionInfo in personInfo.actions.values():
+                f.write(struct.pack('32s', actionInfo.imagePackName))
+                f.write(struct.pack('I', actionInfo.actionIndex))
+                f.write(struct.pack('I', len(actionInfo.directs)))
+                for directInfo in actionInfo.directs.values():
+                    f.write(struct.pack('I', len(directInfo.images)))
+                    for imageIndex in directInfo.images:
+                        f.write(imageIndex)
 
 动作：
 正常站立    待机 
