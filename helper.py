@@ -66,7 +66,8 @@ def trim_image(path, ddsoptimized = False):
             w, h = get_size(path)
             extended_width = w if w % 4 == 0 else w + (4 - w % 4)
             extended_height = h if h % 4 == 0 else h + (4 - h % 4)
-            os.system('convert -gravity northwest -background transparent -extent {0}x{1} {2} {2}'.format(extended_width, extended_height, path))
+            old_page_info = subprocess.check_output("identify.exe -format %g {0}".format(path)).rstrip()
+            os.system('convert -gravity northwest -background transparent -extent {0}x{1} -repage {2} {3} {3}'.format(extended_width, extended_height, old_page_info, path))
 
 
 def move_images(path):
@@ -148,4 +149,4 @@ def single_get_first(unicode1):
         return ''
 
 if __name__ == '__main__':
-    trim_image('000002.png', True)
+    trim_image('000001.png', True)
