@@ -36,7 +36,7 @@ def process_scene(path):
                     for file in glob.glob(os.path.join(destPath, "{0:05d}*.tga".format(index + 1))):
                         pngFile = file.replace('.tga', '.png')
                         os.system('convert {0} {1}'.format(file, pngFile))
-                        trim_image(pngFile)
+                        trim_image(pngFile, True)
                         os.remove(file)
                     move_images(os.path.join(destPath, '*.png'))
 

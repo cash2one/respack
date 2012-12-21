@@ -64,9 +64,15 @@ def crop_image(filename):
     os.system("convert +repage -crop 256x256 {0} {1}\\%02d{2}".format(filename, dirname, os.path.splitext(filename)[1]))
 
 
-def trim_image(path):
+def trim_image(path, ddsoptimized = False):
     if os.path.exists(path):
         os.system('convert.exe -trim {0} {0}'.format(path))
+        if ddsoptimized: #dds格式需确保宽高是4的倍数，否则图片会被无情的拉伸
+            w, h = get_size(path)
+            extended_width = w if w % 4 == 0 else w + (4 - w % 4)
+            extended_height = h if h % 4 == 0 else h + (4 - h % 4)
+            os.system('convert -gravity northwest -background transparent -extent {0}x{1} {2} {2}'.format(extended_width, extended_height, path))
+
 
 def move_images(path):
     for file in glob.glob(path):
@@ -147,4 +153,4 @@ def single_get_first(unicode1):
         return ''
 
 if __name__ == '__main__':
-    print multi_get_letter('新手村')
+    trim_image('000002.png', True)
