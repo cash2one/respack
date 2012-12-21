@@ -61,7 +61,7 @@ def crop_image(filename):
     dirname = filename[:-4]
     if not os.path.exists(dirname):
         os.makedirs(dirname)
-    os.system("convert -crop 256x256 {0} {1}\\%02d{2}".format(filename, dirname, os.path.splitext(filename)[1]))
+    os.system("convert +repage -crop 256x256 {0} {1}\\%02d{2}".format(filename, dirname, os.path.splitext(filename)[1]))
 
 
 def trim_image(path):
