@@ -34,11 +34,6 @@ def get_size(filename):
     return result
 
 
-def get_rawsize(filename):
-    output = subprocess.check_output("identify.exe -format %g {0}".format(filename))
-    result = map(int, output.split(','))
-    return result
-
 def get_rawsize_offset(path):
     if not os.path.exists(path):
         return (0,) * 4
