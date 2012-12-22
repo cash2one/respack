@@ -69,6 +69,8 @@ def process_character(path, idOffset=0):
         actionInfo = personInfo.actions[action]
 
         for fileName in fileNames:
+            if not fileName[-4:] in ['.png', '.tga']:
+                continue
             directIndex = int(fileName[0])
             frameIndex = fileName[-6:-4]
             imageIndex = '{0:03d}{1:02d}{2:02d}{3}'.format(idOffset + int(name[:2]), actionIndex, directIndex,frameIndex)
