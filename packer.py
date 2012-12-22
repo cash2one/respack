@@ -177,6 +177,6 @@ def main():
             bin.frames[index] = images
         save_bin(bin, os.path.join(resPath, "info.bin"))
         compress_file(os.path.join(resPath, "info.bin"))
-        pack_res('res.zip')
+    pack_res('res.zip')
 if __name__ == '__main__':
     main()
