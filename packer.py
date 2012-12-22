@@ -36,7 +36,7 @@ PF_DXT5 = 894720068
 
 def to_dds(files, format="dxt3"):
     if format in ['dxt1', 'dxt2', 'dxt3', 'dxt4', 'dxt5']:
-        os.system("texconv.exe -m 1 -f {0} {1} -o {2}".format(format, files, os.path.dirname(files)))
+        os.system("texconv.exe -m 1 -if NONE -f {0} {1} -o {2}".format(format, files, os.path.dirname(files)))
 
 
 def dds_to_tex(path):
