@@ -145,7 +145,7 @@ def main():
             images = bin.frames[index] if index in bin.frames else []
             for fileName in fileNames:
                 fileExt = os.path.splitext(fileName)[1]
-                if not fileExt in ['.tga', '.png']:
+                if fileExt not in ['.tga', '.png']:
                     continue
                 if os.path.exists(os.path.join(dirPath, fileName.replace(fileExt, '.tex')))\
                 and index in bin.frames:

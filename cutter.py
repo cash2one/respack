@@ -69,7 +69,7 @@ def process_character(path, idOffset=0):
         actionInfo = personInfo.actions[action]
 
         for fileName in fileNames:
-            if not fileName[-4:] in ['.png', '.tga']:
+            if fileName[-4:] not in ['.png', '.tga']:
                 continue
             directIndex = int(fileName[0])
             frameIndex = fileName[-6:-4]
