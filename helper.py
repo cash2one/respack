@@ -59,10 +59,10 @@ def crop_image(filename):
     os.system("convert +repage -crop 256x256 {0} {1}\\%02d{2}".format(filename, dirname, os.path.splitext(filename)[1]))
 
 
-def trim_image(path, ddsoptimized = False):
+def trim_image(path, ddsoptimized = True):
     if os.path.exists(path):
         os.system('convert.exe -trim {0} {0}'.format(path))
-        if ddsoptimized: #dds格式需确保宽高是4的倍数，否则图片会被无情的拉伸
+        if ddsoptimized: #dds格式需确保宽高是4的倍数，否则图片会被拉升导致模糊
             w, h = get_size(path)
             extended_width = w if w % 4 == 0 else w + (4 - w % 4)
             extended_height = h if h % 4 == 0 else h + (4 - h % 4)
