@@ -6,6 +6,13 @@ import sys
 from helper import *
 from collections import namedtuple
 
+def trim_object(path):
+    os.system('convert -trim {0} {0}'.format(path))
+    raw_width, raw_height, offset_x, offset_y = get_rawsize_offset(path)
+    width, height = get_size(path)
+    pageInfo = '{0}x{1}+{2}+{3}'.format(raw_width, raw_height, offset_x - offset_x % 64, offset_y - offset_y % 32)
+    os.system('convert -gravity southeast -background transparent -extent {0}x{1} -repage {2} {3} {3}'.format(width + offset_x % 64, height + offset_y % 32, pageInfo, path))
+
 def process_scene(path):
     prefixMap = {'地表' : 'tile', '物件' : 'obj'}
     for dir in filter(lambda dir:os.path.isdir(os.path.join(path, dir)), os.listdir(path)):
@@ -21,23 +28,28 @@ def process_scene(path):
                 shutil.rmtree(destPath)
             os.makedirs(destPath)
             for index, name in enumerate(fileNames):
-                destFile = os.path.join(destPath, '{0:05d}.tga'.format(index + 1))
+                if name[-4:] not in ['.tga', '.png']:
+                    continue
+                destFile = os.path.join(destPath, '{0:05d}{1}'.format(index + 1, name[-4:]))
                 shutil.copyfile(os.path.join(dirPath, name), destFile)
+                if destFile.endswith('.tga'):
+                    pngFile = destFile.replace('.tga', '.png')
+                    os.system('convert {0} {1}'.format(destFile, pngFile))
+                    os.remove(destFile)
+                    destFile = pngFile
                 if resType == '地表':
-                    os.system("convert -crop 0x128 {0} {1}%02d.tga".format(destFile, os.path.splitext(destFile)[0]))
+                    os.system("convert -crop 0x128 {0} {1}%02d.png".format(destFile, os.path.splitext(destFile)[0]))
                     os.remove(destFile)
-                    for file in glob.glob(os.path.join(destPath, "{0:05d}*.tga".format(index + 1))):
-                        os.system("convert -crop 128x0 {0} {1}%02d.tga".format(file, os.path.splitext(file)[0]))
+                    for file in glob.glob(os.path.join(destPath, "{0:05d}*.png".format(index + 1))):
+                        os.system("convert -crop 128x0 {0} {1}%02d.png".format(file, os.path.splitext(file)[0]))
                         os.remove(file)
-                    move_images(os.path.join(destPath, '*.tga'))
-                else:
-                    os.system("convert -crop 64x0 {0} {1}%04d.tga".format(destFile, os.path.splitext(destFile)[0]))
+                    move_images(os.path.join(destPath, '*.png'))
+                elif resType == '物件':
+                    trim_object(destFile)
+                    os.system("convert +repage -crop 64x0 {0} {1}%04d.png".format(destFile, os.path.splitext(destFile)[0]))
                     os.remove(destFile)
-                    for file in glob.glob(os.path.join(destPath, "{0:05d}*.tga".format(index + 1))):
-                        pngFile = file.replace('.tga', '.png')
-                        os.system('convert {0} {1}'.format(file, pngFile))
-                        trim_image(pngFile, True)
-                        os.remove(file)
+                    for file in glob.glob(os.path.join(destPath, "{0:05d}*.png".format(index + 1))):
+                        trim_image(file)
                     move_images(os.path.join(destPath, '*.png'))
 
 
