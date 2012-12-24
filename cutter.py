@@ -3,6 +3,7 @@ import os
 import glob
 import shutil
 import sys
+import math
 from helper import *
 from collections import namedtuple
 
@@ -11,7 +12,11 @@ def trim_object(path):
     raw_width, raw_height, offset_x, offset_y = get_rawsize_offset(path)
     width, height = get_size(path)
     pageInfo = '{0}x{1}+{2}+{3}'.format(raw_width, raw_height, offset_x - offset_x % 64, offset_y - offset_y % 32)
-    os.system('convert -gravity southeast -background transparent -extent {0}x{1} -repage {2} {3} {3}'.format(width + offset_x % 64, height + offset_y % 32, pageInfo, path))
+    extent_width = width + offset_x % 64
+    extent_height = height + offset_y % 32 #先算上边
+    os.system('convert -gravity southeast -background transparent -extent {0}x{1} -repage {2} {3} {3}'.format(extent_width, extent_height, pageInfo, path))
+    extent_height += int(math.ceil(extent_height/32.0)) * 32 - extent_height
+    os.system('convert -gravity northwest -background transparent -extent {0}x{1} -repage {2} {3} {3}'.format(extent_width, extent_height, pageInfo, path))
 
 def process_scene(path):
     prefixMap = {'地表' : 'tile', '物件' : 'obj'}
@@ -34,19 +39,19 @@ def process_scene(path):
                 shutil.copyfile(os.path.join(dirPath, name), destFile)
                 if destFile.endswith('.tga'):
                     pngFile = destFile.replace('.tga', '.png')
-                    os.system('convert {0} {1}'.format(destFile, pngFile))
+                    os.system('convert +repage {0} {1}'.format(destFile, pngFile))
                     os.remove(destFile)
                     destFile = pngFile
                 if resType == '地表':
-                    os.system("convert -crop 0x128 {0} {1}%02d.png".format(destFile, os.path.splitext(destFile)[0]))
+                    os.system("convert {0} -crop 0x128 +repage {1}%02d.png".format(destFile, os.path.splitext(destFile)[0]))
                     os.remove(destFile)
                     for file in glob.glob(os.path.join(destPath, "{0:05d}*.png".format(index + 1))):
-                        os.system("convert -crop 128x0 {0} {1}%02d.png".format(file, os.path.splitext(file)[0]))
+                        os.system("convert {0} -crop 128x0 +repage  {1}%02d.png".format(file, os.path.splitext(file)[0]))
                         os.remove(file)
                     move_images(os.path.join(destPath, '*.png'))
                 elif resType == '物件':
                     trim_object(destFile)
-                    os.system("convert +repage -crop 64x0 {0} {1}%04d.png".format(destFile, os.path.splitext(destFile)[0]))
+                    os.system("convert {0} +repage -crop 64x0 +repage {1}%04d.png".format(destFile, os.path.splitext(destFile)[0]))
                     os.remove(destFile)
                     for file in glob.glob(os.path.join(destPath, "{0:05d}*.png".format(index + 1))):
                         trim_image(file)
