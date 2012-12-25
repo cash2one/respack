@@ -74,8 +74,9 @@ PersonInfo = namedtuple('PersonInfo','name actions')
 ActionInfo = namedtuple('ActionInfo', 'imagePackName actionIndex directs')
 DirectionInfo = namedtuple('DirectionInfo','images')
 personInfos = {}
+idPattern = re.compile(r'^(\d+)')
 
-def process_character(path, idOffset=0):
+def process_character(path):
     global personInfos
     prefixMap = {'角色' : 'human', '魔法' : 'magic', '武器' : 'weapon'}
     actionTuple = ('出生', '待机','采集', '跑步', '跳斩', '走路', '物理攻击', '魔法攻击', '骑乘待机', '骑乘跑动')
@@ -102,7 +103,12 @@ def process_character(path, idOffset=0):
                 continue
             directIndex = int(fileName[0])
             frameIndex = fileName[-6:-4]
-            imageIndex = '{0:03d}{1:02d}{2:02d}{3}'.format(idOffset + int(name[:2]), actionIndex, directIndex,frameIndex)
+            idMatched = idPattern.search(name)
+            if idMatched:
+                id = idMatched.groups()[0]
+            else:
+                raise '角色目录名不规范，必须以纯数字开头'
+            imageIndex = '{0:03d}{1:02d}{2:02d}{3}'.format(int(id), actionIndex, directIndex,frameIndex)
             if directIndex not in actionInfo.directs:
                 actionInfo.directs[directIndex] = DirectionInfo(images=[])
             directInfo = actionInfo.directs[directIndex]
@@ -148,10 +154,10 @@ def main():
     if action == 'scene':
         process_scene(os.path.join(SRC, '场景'))
     elif action == 'char':
+        process_character(os.path.join(SRC, '角色', '通用'))
         process_character(os.path.join(SRC, '角色', '战士'))
         process_character(os.path.join(SRC, '角色', '法师'))
         process_character(os.path.join(SRC, '角色', '道士'))
-        process_character(os.path.join(SRC, '角色', '通用'))
         if len(personInfos) != 0:
             export_per_file(os.path.join(RES, 'human.per'))
     elif action == 'magic':
