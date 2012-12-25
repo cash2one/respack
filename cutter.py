@@ -138,7 +138,7 @@ def export_per_file(path):
                         f.write(struct.pack('I',int(imageIndex)))
 
 def useage():
-    print "Usage: cutter.py [scene|char|magic|weapon]"
+    print "Usage: cutter.py [scene|char|magic|weapon|npc|monster]"
 
 def main():
     if len(sys.argv) != 2:
@@ -151,6 +151,7 @@ def main():
         process_character(os.path.join(SRC, '角色', '战士'))
         process_character(os.path.join(SRC, '角色', '法师'))
         process_character(os.path.join(SRC, '角色', '道士'))
+        process_character(os.path.join(SRC, '角色', '通用'))
         if len(personInfos) != 0:
             export_per_file(os.path.join(RES, 'human.per'))
     elif action == 'magic':
@@ -165,6 +166,14 @@ def main():
         process_character(os.path.join(SRC, '武器', '道士'))
         if len(personInfos) != 0:
             export_per_file(os.path.join(RES, 'weapon.per'))
+    elif action == 'npc':
+        process_character(os.path.join(SRC, 'npc', '通用'))
+        if len(personInfos) != 0:
+            export_per_file(os.path.join(RES, 'npc.per'))
+    elif action == 'monster':
+        process_character(os.path.join(SRC, 'monster', '通用'))
+        if len(personInfos) != 0:
+            export_per_file(os.path.join(RES, 'monster.per'))
     else:
         useage()
 
