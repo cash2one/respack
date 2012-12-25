@@ -16,59 +16,63 @@ WOOOL_FLAG_UNKNOW		= 16
 NmpFileHeader = namedtuple('NmpFileHeader', 'size version width height unknown')
 NmpFileHeader.struct_format = '4I16s'
 
-def generate_map(mapData, path):
+def generate_map(path):
     pass
 
+
+def process_tile(path):
+    sceneName = path.split(os.sep)[-2]
+    print '正在处理{0}地表...'.format(sceneName)
+    destPath = os.path.join(RES_PATH, 'tile_{0}'.format(multi_get_letter(sceneName)))
+    force_directory(destPath)
+    for index, tileFile in enumerate(glob.glob(os.path.join(path, '*.png'))):
+        destFile = os.path.join(destPath, '{0:05d}.png'.format(index + 1))
+        shutil.copyfile(tileFile, destFile)
+        os.system("convert {0} -crop 0x128 +repage {1}%02d.png".format(destFile, os.path.splitext(destFile)[0]))
+        for file in glob.glob(os.path.join(destPath, "{0:05d}??.png".format(index + 1))):
+            os.system("convert {0} -crop 128x0 +repage  {1}%02d-000001.png".format(file, os.path.splitext(file)[0]))
+            os.remove(file)
+        put_images_into_folder(os.path.join(destPath, "{0:05d}????-*.png".format(index + 1)))
+
+
 def trim_object(path):
-    os.system('convert -trim {0} {0}'.format(path))
+    trim_image(path, False)
     width, height, raw_width, raw_height, offset_x, offset_y = identify_image(path)
     pageInfo = '{0}x{1}+{2}+{3}'.format(raw_width, raw_height, offset_x - offset_x % 64, offset_y - offset_y % 32)
     extent_width = width + offset_x % 64
-    extent_height = height + offset_y % 32 #先算上边
+    extent_height = height + offset_y % 32
     os.system('convert -gravity southeast -background transparent -extent {0}x{1} -repage {2} {3} {3}'.format(extent_width, extent_height, pageInfo, path))
     extent_height += int(math.ceil(extent_height/32.0)) * 32 - extent_height
     os.system('convert -gravity northwest -background transparent -extent {0}x{1} -repage {2} {3} {3}'.format(extent_width, extent_height, pageInfo, path))
 
-def process_scene(path):
-    prefixMap = {'地表' : 'tile', '物件' : 'obj'}
+
+def process_object(path):
+    sceneName = path.split(os.sep)[-2]
+    print '正在处理{0}物件...'.format(sceneName)
+    destPath = os.path.join(RES_PATH, 'obj_{0}'.format(multi_get_letter(sceneName)))
+    force_directory(destPath)
     for dir in filter(lambda dir:os.path.isdir(os.path.join(path, dir)), os.listdir(path)):
-        mapData = {'name' : dir}
-        scenePath = os.path.join(path, dir)
-        for (dirPath, dirNames, fileNames) in os.walk(scenePath):
-            if len(dirPath.split(os.sep)) != 4:
-                continue
-            sceneName, resType = dirPath.split(os.sep)[-2:]
-            if resType not in prefixMap.keys():
-                continue
-            destPath = os.path.join(RES_PATH, '{0}_{1}'.format(prefixMap[resType], multi_get_letter(sceneName)))
-            if os.path.exists(destPath):
-                shutil.rmtree(destPath)
-            os.makedirs(destPath)
-            for index, name in enumerate(fileNames):
-                if name[-4:] not in ['.tga', '.png']:
-                    continue
-                destFile = os.path.join(destPath, '{0:05d}{1}'.format(index + 1, name[-4:]))
-                shutil.copyfile(os.path.join(dirPath, name), destFile)
-                if destFile.endswith('.tga'):
-                    pngFile = destFile.replace('.tga', '.png')
-                    os.system('convert {0} {1}'.format(destFile, pngFile))
-                    os.remove(destFile)
-                    destFile = pngFile
-                if resType == '地表':
-                    os.system("convert {0} -crop 0x128 +repage {1}%02d.png".format(destFile, os.path.splitext(destFile)[0]))
-                    os.remove(destFile)
-                    for file in glob.glob(os.path.join(destPath, "{0:05d}*.png".format(index + 1))):
-                        os.system("convert {0} -crop 128x0 +repage  {1}%02d.png".format(file, os.path.splitext(file)[0]))
-                        os.remove(file)
-                    move_images(os.path.join(destPath, '*.png'))
-                elif resType == '物件':
-                    trim_object(destFile)
-                    os.system("convert {0} +repage -crop 64x0 +repage {1}%04d.png".format(destFile, os.path.splitext(destFile)[0]))
-                    os.remove(destFile)
-                    for file in glob.glob(os.path.join(destPath, "{0:05d}*.png".format(index + 1))):
-                        trim_image(file)
-                    move_images(os.path.join(destPath, '*.png'))
-        generate_map(mapData, os.path.join(RES_PATH, '{0}.map'.format(multi_get_letter(dir))))
+        dirIndex = find_leading_num(dir)
+        assert len(dirIndex) == 1, '物件目录名不规范，必须以纯数字开头'
+        for frameIndex, frameFile in enumerate(glob.glob(os.path.join(path, dir, '*.png'))):
+            destFile = os.path.join(destPath, '{0:05d}-{1:06d}.png'.format(int(dirIndex[0]), frameIndex+1))
+            shutil.copyfile(frameFile, destFile)
+            trim_object(destFile)
+            os.system("convert {0} +repage -crop 64x0 +repage {1}%04d-{2:06d}.png".format(destFile,
+                os.path.splitext(destFile)[0][:-7], frameIndex + 1))
+            for file in glob.glob(os.path.join(destPath, "{0:05d}00*.png".format(int(dirIndex[0])))):
+                trim_image(file)
+        put_images_into_folder(os.path.join(destPath, "{0:05d}00*.png".format(int(dirIndex[0]))))
+
+def process_map(path):
+    process_tile(os.path.join(path, '地表'))
+    process_object(os.path.join(path, '物件'))
+    generate_map(path)
+
+
+def process_scene(path):
+    for dir in filter(lambda dir:os.path.isdir(os.path.join(path, dir)), os.listdir(path)):
+        process_map(os.path.join(path, dir))
 
 
 PersonInfo = namedtuple('PersonInfo','name actions')

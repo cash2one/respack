@@ -72,10 +72,20 @@ def trim_image(path, ddsoptimized = True):
             os.system('convert -gravity northwest -background transparent -extent {0}x{1} -repage {2} {3} {3}'.format(extended_width, extended_height, old_page_info, path))
 
 
-def move_images(path):
+def put_images_into_folder(path):
     for file in glob.glob(path):
-        os.mkdir(file[:-4])
-        shutil.move(file, '{0}\\000001{1}'.format(file[:-4], file[-4:]))
+        dirName = file[:-11]
+        fileName = file[-10:]
+        if not os.path.exists(dirName):
+            os.mkdir(dirName)
+        shutil.move(file, os.path.join(dirName, fileName))
+
+
+def force_directory(path):
+    if os.path.exists(path):
+        shutil.rmtree(path)
+    os.makedirs(path)
+
 
 def multi_get_letter(str_input):
     if isinstance(str_input, unicode):
@@ -151,4 +161,4 @@ def single_get_first(unicode1):
         return ''
 
 if __name__ == '__main__':
-    print identify_image('01.png')
+    put_images_into_folder('src\\场景\\魔界\\物件\\*.png')
