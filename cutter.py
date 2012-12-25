@@ -7,6 +7,18 @@ import math
 from helper import *
 from collections import namedtuple
 
+WOOOL_FLAG_BLOCK		= 1
+WOOOL_FLAG_SMALLTILE	= 2
+WOOOL_FLAG_TILE			= 4
+WOOOL_FLAG_OBJECT		= 8
+WOOOL_FLAG_UNKNOW		= 16
+
+NmpFileHeader = namedtuple('NmpFileHeader', 'size version width height unknown')
+NmpFileHeader.struct_format = '4I16s'
+
+def generate_map(path):
+    pass
+
 def trim_object(path):
     os.system('convert -trim {0} {0}'.format(path))
     raw_width, raw_height, offset_x, offset_y = get_rawsize_offset(path)
@@ -39,7 +51,7 @@ def process_scene(path):
                 shutil.copyfile(os.path.join(dirPath, name), destFile)
                 if destFile.endswith('.tga'):
                     pngFile = destFile.replace('.tga', '.png')
-                    os.system('convert +repage {0} {1}'.format(destFile, pngFile))
+                    os.system('convert {0} {1}'.format(destFile, pngFile))
                     os.remove(destFile)
                     destFile = pngFile
                 if resType == '地表':
@@ -137,20 +149,20 @@ def main():
         process_scene(os.path.join(SRC, '场景'))
     elif action == 'char':
         process_character(os.path.join(SRC, '角色', '战士'))
-        process_character(os.path.join(SRC, '角色', '法师'), 100)
-        process_character(os.path.join(SRC, '角色', '道士'), 200)
+        process_character(os.path.join(SRC, '角色', '法师'))
+        process_character(os.path.join(SRC, '角色', '道士'))
         if len(personInfos) != 0:
             export_per_file(os.path.join(RES, 'human.per'))
     elif action == 'magic':
         process_character(os.path.join(SRC, '魔法', '战士'))
-        process_character(os.path.join(SRC, '魔法', '法师'), 100)
-        process_character(os.path.join(SRC, '魔法', '道士'), 200)
+        process_character(os.path.join(SRC, '魔法', '法师'))
+        process_character(os.path.join(SRC, '魔法', '道士'))
         if len(personInfos) != 0:
             export_per_file(os.path.join(RES, 'magic.per'))
     elif action == 'weapon':
         process_character(os.path.join(SRC, '武器', '战士'))
-        process_character(os.path.join(SRC, '武器', '法师'), 100)
-        process_character(os.path.join(SRC, '武器', '道士'), 200)
+        process_character(os.path.join(SRC, '武器', '法师'))
+        process_character(os.path.join(SRC, '武器', '道士'))
         if len(personInfos) != 0:
             export_per_file(os.path.join(RES, 'weapon.per'))
     else:
