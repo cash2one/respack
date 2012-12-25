@@ -1,0 +1,2 @@
+@cutter.py npc
+@pause
