@@ -7,10 +7,12 @@ import subprocess
 import zlib
 import re
 
-pattern = re.compile(r'(\d+)x(\d+)([\+\-]\d+)([\+\-]\d+)')
+SRC_PATH = 'src'
+RES_PATH = 'res'
 
-SRC = 'src'
-RES = 'res'
+def find_leading_num(name):
+    return re.findall(r'^\d+', name)
+
 
 def compress_file(path):
     if os.path.exists(path):
@@ -27,24 +29,24 @@ def decompress_file(path):
         with open(path, 'wb') as f:
             f.write(buffer)
 
+def identify_image(filename):
+    output = subprocess.check_output('identify.exe -format %w,%h,%g {0}'.format(filename))
+    return [int(item) for item in re.search(r'(\d+),(\d+),(\d+)x(\d+)([\+\-]\d+)([\+\-]\d+)', output).groups()]
 
 def get_size(filename):
-    output = subprocess.check_output("identify.exe -format %w,%h {0}".format(filename))
-    result = map(int, output.split(','))
-    return result
+    return identify_image(filename)[:2]
 
 
-def get_rawsize_offset(path):
-    if not os.path.exists(path):
+def get_rawsize_offset(filename):
+    if not os.path.exists(filename):
         return (0,) * 4
-    if path.endswith('.tga'):
-        with open(path, 'rb') as f:
+    if filename.endswith('.tga'):
+        with open(filename, 'rb') as f:
             f.seek(3)
             offset_x, offset_y = struct.unpack('2H', f.read(struct.calcsize('2H')))
             raw_width, raw_height = 0, 0
-    elif path.endswith('.png'):
-        output = subprocess.check_output("identify.exe -format %g {0}".format(path))
-        raw_width, raw_height, offset_x, offset_y = [int(item) for item in pattern.search(output).groups()]
+    elif filename.endswith('.png'):
+        _, _, raw_width, raw_height, offset_x, offset_y = identify_image(filename)
     else:
         raw_width, raw_height, offset_x, offset_y = (0,) * 4
     return raw_width, raw_height, offset_x, offset_y
@@ -149,4 +151,4 @@ def single_get_first(unicode1):
         return ''
 
 if __name__ == '__main__':
-    trim_image('000001.png', True)
+    print identify_image('01.png')

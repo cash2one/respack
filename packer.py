@@ -128,14 +128,14 @@ def save_bin(binData, path):
 
 def pack_res(path, exts = ['.tex', '.bin', '.per']):
     with zipfile.ZipFile(path, 'w') as reszip:
-        for base, dirs, files in os.walk(RES):
+        for base, dirs, files in os.walk(RES_PATH):
             for file in files:
                 if file[-4:] in exts:
                     reszip.write(os.path.join(base, file))
 
 def main():
-    for dir in filter(lambda dir:os.path.isdir(os.path.join(RES, dir)), os.listdir(RES)):
-        resPath = os.path.join(RES, dir)
+    for dir in filter(lambda dir:os.path.isdir(os.path.join(RES_PATH, dir)), os.listdir(RES_PATH)):
+        resPath = os.path.join(RES_PATH, dir)
         decompress_file(os.path.join(resPath, "info.bin"))
         bin = load_bin(os.path.join(resPath, "info.bin"))
         for (dirPath, dirNames, fileNames) in os.walk(resPath):

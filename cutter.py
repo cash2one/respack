@@ -16,13 +16,12 @@ WOOOL_FLAG_UNKNOW		= 16
 NmpFileHeader = namedtuple('NmpFileHeader', 'size version width height unknown')
 NmpFileHeader.struct_format = '4I16s'
 
-def generate_map(path):
+def generate_map(mapData, path):
     pass
 
 def trim_object(path):
     os.system('convert -trim {0} {0}'.format(path))
-    raw_width, raw_height, offset_x, offset_y = get_rawsize_offset(path)
-    width, height = get_size(path)
+    width, height, raw_width, raw_height, offset_x, offset_y = identify_image(path)
     pageInfo = '{0}x{1}+{2}+{3}'.format(raw_width, raw_height, offset_x - offset_x % 64, offset_y - offset_y % 32)
     extent_width = width + offset_x % 64
     extent_height = height + offset_y % 32 #先算上边
@@ -33,6 +32,7 @@ def trim_object(path):
 def process_scene(path):
     prefixMap = {'地表' : 'tile', '物件' : 'obj'}
     for dir in filter(lambda dir:os.path.isdir(os.path.join(path, dir)), os.listdir(path)):
+        mapData = {'name' : dir}
         scenePath = os.path.join(path, dir)
         for (dirPath, dirNames, fileNames) in os.walk(scenePath):
             if len(dirPath.split(os.sep)) != 4:
@@ -40,7 +40,7 @@ def process_scene(path):
             sceneName, resType = dirPath.split(os.sep)[-2:]
             if resType not in prefixMap.keys():
                 continue
-            destPath = os.path.join(RES, '{0}_{1}'.format(prefixMap[resType], multi_get_letter(sceneName)))
+            destPath = os.path.join(RES_PATH, '{0}_{1}'.format(prefixMap[resType], multi_get_letter(sceneName)))
             if os.path.exists(destPath):
                 shutil.rmtree(destPath)
             os.makedirs(destPath)
@@ -68,13 +68,13 @@ def process_scene(path):
                     for file in glob.glob(os.path.join(destPath, "{0:05d}*.png".format(index + 1))):
                         trim_image(file)
                     move_images(os.path.join(destPath, '*.png'))
+        generate_map(mapData, os.path.join(RES_PATH, '{0}.map'.format(multi_get_letter(dir))))
 
 
 PersonInfo = namedtuple('PersonInfo','name actions')
 ActionInfo = namedtuple('ActionInfo', 'imagePackName actionIndex directs')
 DirectionInfo = namedtuple('DirectionInfo','images')
 personInfos = {}
-idPattern = re.compile(r'^(\d+)')
 
 def process_character(path):
     global personInfos
@@ -103,18 +103,15 @@ def process_character(path):
                 continue
             directIndex = int(fileName[0])
             frameIndex = fileName[-6:-4]
-            idMatched = idPattern.search(name)
-            if idMatched:
-                id = idMatched.groups()[0]
-            else:
-                raise '角色目录名不规范，必须以纯数字开头'
-            imageIndex = '{0:03d}{1:02d}{2:02d}{3}'.format(int(id), actionIndex, directIndex,frameIndex)
+            leading_num = find_leading_num(name)
+            assert len(leading_num) == 1, '角色目录名不规范，必须以纯数字开头'
+            imageIndex = '{0:03d}{1:02d}{2:02d}{3}'.format(int(leading_num[0]), actionIndex, directIndex,frameIndex)
             if directIndex not in actionInfo.directs:
                 actionInfo.directs[directIndex] = DirectionInfo(images=[])
             directInfo = actionInfo.directs[directIndex]
             if imageIndex not in directInfo.images:
                 directInfo.images.append(imageIndex)
-            destPath = os.path.join(RES, prefixMap[resType], imageIndex)
+            destPath = os.path.join(RES_PATH, prefixMap[resType], imageIndex)
             if os.path.exists(destPath):
                 shutil.rmtree(destPath)
             os.makedirs(destPath)
@@ -152,34 +149,34 @@ def main():
         exit(0)
     action = sys.argv[1]
     if action == 'scene':
-        process_scene(os.path.join(SRC, '场景'))
+        process_scene(os.path.join(SRC_PATH, '场景'))
     elif action == 'char':
-        process_character(os.path.join(SRC, '角色', '通用'))
-        process_character(os.path.join(SRC, '角色', '战士'))
-        process_character(os.path.join(SRC, '角色', '法师'))
-        process_character(os.path.join(SRC, '角色', '道士'))
+        process_character(os.path.join(SRC_PATH, '角色', '通用'))
+        process_character(os.path.join(SRC_PATH, '角色', '战士'))
+        process_character(os.path.join(SRC_PATH, '角色', '法师'))
+        process_character(os.path.join(SRC_PATH, '角色', '道士'))
         if len(personInfos) != 0:
-            export_per_file(os.path.join(RES, 'human.per'))
+            export_per_file(os.path.join(RES_PATH, 'human.per'))
     elif action == 'magic':
-        process_character(os.path.join(SRC, '魔法', '战士'))
-        process_character(os.path.join(SRC, '魔法', '法师'))
-        process_character(os.path.join(SRC, '魔法', '道士'))
+        process_character(os.path.join(SRC_PATH, '魔法', '战士'))
+        process_character(os.path.join(SRC_PATH, '魔法', '法师'))
+        process_character(os.path.join(SRC_PATH, '魔法', '道士'))
         if len(personInfos) != 0:
-            export_per_file(os.path.join(RES, 'magic.per'))
+            export_per_file(os.path.join(RES_PATH, 'magic.per'))
     elif action == 'weapon':
-        process_character(os.path.join(SRC, '武器', '战士'))
-        process_character(os.path.join(SRC, '武器', '法师'))
-        process_character(os.path.join(SRC, '武器', '道士'))
+        process_character(os.path.join(SRC_PATH, '武器', '战士'))
+        process_character(os.path.join(SRC_PATH, '武器', '法师'))
+        process_character(os.path.join(SRC_PATH, '武器', '道士'))
         if len(personInfos) != 0:
-            export_per_file(os.path.join(RES, 'weapon.per'))
+            export_per_file(os.path.join(RES_PATH, 'weapon.per'))
     elif action == 'npc':
-        process_character(os.path.join(SRC, 'npc', '通用'))
+        process_character(os.path.join(SRC_PATH, 'npc', '通用'))
         if len(personInfos) != 0:
-            export_per_file(os.path.join(RES, 'npc.per'))
+            export_per_file(os.path.join(RES_PATH, 'npc.per'))
     elif action == 'monster':
-        process_character(os.path.join(SRC, 'monster', '通用'))
+        process_character(os.path.join(SRC_PATH, 'monster', '通用'))
         if len(personInfos) != 0:
-            export_per_file(os.path.join(RES, 'monster.per'))
+            export_per_file(os.path.join(RES_PATH, 'monster.per'))
     else:
         useage()
 
