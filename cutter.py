@@ -16,9 +16,9 @@ WOOOL_FLAG_UNKNOW		= 16
 NmpFileHeader = namedtuple('NmpFileHeader', 'size version width height unknown')
 NmpFileHeader.struct_format = '4I16s'
 
-ignoreMaps = []
+ignoredMaps = []
 def generate_map(sceneName, path):
-    if sceneName in ignoreMaps:
+    if sceneName in ignoredMaps:
         return
     tileFile = os.path.join(RES_PATH, 'tile-{0}'.format(multi_get_letter(sceneName)), '00001.png')
     if not os.path.exists(tileFile):
