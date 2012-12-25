@@ -16,14 +16,56 @@ WOOOL_FLAG_UNKNOW		= 16
 NmpFileHeader = namedtuple('NmpFileHeader', 'size version width height unknown')
 NmpFileHeader.struct_format = '4I16s'
 
-def generate_map(path):
-    pass
+ignoreMaps = []
+def generate_map(sceneName, path):
+    if sceneName in ignoreMaps:
+        return
+    tileFile = os.path.join(RES_PATH, 'tile-{0}'.format(multi_get_letter(sceneName)), '00001.png')
+    if not os.path.exists(tileFile):
+        return
+    packIndex = find_leading_num(sceneName)
+    assert len(packIndex) == 1, '地图目录名不规范，必须以纯数字开头'
+    tileData = {}
+    objectData = {}
+    width, height = identify_image(tileFile)[:2]
+    mapHeader = NmpFileHeader(size=32, version=100, width=width, height=height, unknown='')
 
+    for y in range(mapHeader.height / 64):
+        for x in range(mapHeader.width / 32):
+            if (y % 4 == 0) and (x % 2 == 0):
+                imageIndex = '{0:05d}{1:02d}{2:02d}'.format(1, y/4, x/2)
+                tileData[(x,y)] = int(imageIndex)
+
+    for file in glob.glob(os.path.join(RES_PATH, 'obj-{0}'.format(multi_get_letter(sceneName)), '*-000001.png')):
+        w,h, raw_width, raw_height, offset_x, offset_y = identify_image(file)
+        for i in range(int(math.ceil(w/64.0))):
+            x, y  = offset_x/64 + i, (h + offset_y)/32
+            imageIndex = '{0}{1:02d}{2:02d}'.format(file.split(os.sep)[-1][:-11], 0, i)
+            objectData[(x, y)] = (int(imageIndex), h)
+
+
+    with open(path, 'wb') as f:
+        f.write(struct.pack(NmpFileHeader.struct_format, *mapHeader))
+        for y in range(mapHeader.height / 64):
+            for x in range(mapHeader.width / 32):
+                flag = 0
+                if (x,y) in tileData:
+                    flag |= WOOOL_FLAG_TILE
+                if (x,y) in objectData:
+                    flag |= WOOOL_FLAG_OBJECT
+                f.write(struct.pack('b', flag))
+                if (x,y) in tileData:
+                    f.write(struct.pack('I', tileData[(x,y)] - 1))
+                    f.write(struct.pack('I', int(packIndex[0]) - 1))
+                if (x,y) in objectData:
+                    f.write(struct.pack('I', objectData[(x,y)][0] - 1))
+                    f.write(struct.pack('I', int(packIndex[0]) - 1))
+                    f.write(struct.pack('I', objectData[(x,y)][1]))
 
 def process_tile(path):
     sceneName = path.split(os.sep)[-2]
     print '正在处理{0}地表...'.format(sceneName)
-    destPath = os.path.join(RES_PATH, 'tile_{0}'.format(multi_get_letter(sceneName)))
+    destPath = os.path.join(RES_PATH, 'tile-{0}'.format(multi_get_letter(sceneName)))
     force_directory(destPath)
     for index, tileFile in enumerate(glob.glob(os.path.join(path, '*.png'))):
         destFile = os.path.join(destPath, '{0:05d}.png'.format(index + 1))
@@ -49,7 +91,7 @@ def trim_object(path):
 def process_object(path):
     sceneName = path.split(os.sep)[-2]
     print '正在处理{0}物件...'.format(sceneName)
-    destPath = os.path.join(RES_PATH, 'obj_{0}'.format(multi_get_letter(sceneName)))
+    destPath = os.path.join(RES_PATH, 'obj-{0}'.format(multi_get_letter(sceneName)))
     force_directory(destPath)
     for dir in filter(lambda dir:os.path.isdir(os.path.join(path, dir)), os.listdir(path)):
         dirIndex = find_leading_num(dir)
@@ -67,7 +109,8 @@ def process_object(path):
 def process_map(path):
     process_tile(os.path.join(path, '地表'))
     process_object(os.path.join(path, '物件'))
-    generate_map(path)
+    sceneName = path.split(os.sep)[-1]
+    generate_map(sceneName, os.path.join(RES_PATH, '{0}.map'.format(multi_get_letter(sceneName))))
 
 
 def process_scene(path):
