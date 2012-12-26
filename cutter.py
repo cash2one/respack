@@ -128,7 +128,7 @@ personInfos = {}
 
 def process_character(path):
     global personInfos
-    prefixMap = {'角色' : 'human', '魔法' : 'magic', '武器' : 'weapon'}
+    prefixMap = {'角色' : 'human', '魔法' : 'magic', '武器' : 'weapon', 'npc' : 'npc'}
     actionTuple = ('出生', '待机','采集', '跑步', '跳斩', '走路', '物理攻击', '魔法攻击', '骑乘待机', '骑乘跑动')
     resType = path.split(os.sep)[-2]
     if resType  not in prefixMap.keys():
