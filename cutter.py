@@ -28,7 +28,7 @@ def generate_map(sceneName, path):
     tileData = {}
     objectData = {}
     imageWidth, imageHeight = identify_image(tileFile)[:2]
-    mapHeader = NmpFileHeader(size=32, version=100, width=imageWidth/32, height=imageHeight/64, unknown='')
+    mapHeader = NmpFileHeader(size=32, version=100, width=imageWidth/64, height=imageHeight/32, unknown='')
 
     for y in range(mapHeader.height):
         for x in range(mapHeader.width):
@@ -39,7 +39,7 @@ def generate_map(sceneName, path):
     for file in glob.glob(os.path.join(RES_PATH, 'obj-{0}'.format(multi_get_letter(sceneName)), '*-000001.png')):
         w,h, raw_width, raw_height, offset_x, offset_y = identify_image(file)
         for i in range(int(math.ceil(w/64.0))):
-            x, y  = offset_x/64 + i, (h + offset_y)/32
+            x, y  = offset_x/64 + i, (h + offset_y)/32 - 1
             imageIndex = '{0}{1:02d}{2:02d}'.format(file.split(os.sep)[-1][:-11], 0, i)
             objectData[(x, y)] = (int(imageIndex), h)
 
@@ -110,7 +110,10 @@ def process_map(path):
     process_tile(os.path.join(path, '地表'))
     process_object(os.path.join(path, '物件'))
     sceneName = path.split(os.sep)[-1]
-    generate_map(sceneName, os.path.join(RES_PATH, '{0}.map'.format(multi_get_letter(sceneName))))
+    mapPath = os.path.join(RES_PATH, 'map')
+    if not os.path.exists(mapPath):
+        os.makedirs(mapPath)
+    generate_map(sceneName, os.path.join(mapPath, '{0}.map'.format(multi_get_letter(sceneName))))
 
 
 def process_scene(path):
@@ -194,6 +197,9 @@ def main():
     if len(sys.argv) != 2:
         useage()
         exit(0)
+    datasPath = os.path.join(RES_PATH, 'datas')
+    if not os.path.exists(datasPath):
+        os.makedirs(datasPath)
     action = sys.argv[1]
     if action == 'scene':
         process_scene(os.path.join(SRC_PATH, '场景'))
@@ -203,27 +209,27 @@ def main():
         process_character(os.path.join(SRC_PATH, '角色', '法师'))
         process_character(os.path.join(SRC_PATH, '角色', '道士'))
         if len(personInfos) != 0:
-            export_per_file(os.path.join(RES_PATH, 'human.per'))
+            export_per_file(os.path.join(datasPath,  'human.per'))
     elif action == 'magic':
         process_character(os.path.join(SRC_PATH, '魔法', '战士'))
         process_character(os.path.join(SRC_PATH, '魔法', '法师'))
         process_character(os.path.join(SRC_PATH, '魔法', '道士'))
         if len(personInfos) != 0:
-            export_per_file(os.path.join(RES_PATH, 'magic.per'))
+            export_per_file(os.path.join(datasPath, 'magic.per'))
     elif action == 'weapon':
         process_character(os.path.join(SRC_PATH, '武器', '战士'))
         process_character(os.path.join(SRC_PATH, '武器', '法师'))
         process_character(os.path.join(SRC_PATH, '武器', '道士'))
         if len(personInfos) != 0:
-            export_per_file(os.path.join(RES_PATH, 'weapon.per'))
+            export_per_file(os.path.join(datasPath, 'weapon.per'))
     elif action == 'npc':
         process_character(os.path.join(SRC_PATH, 'npc', '通用'))
         if len(personInfos) != 0:
-            export_per_file(os.path.join(RES_PATH, 'npc.per'))
+            export_per_file(os.path.join(datasPath, 'npc.per'))
     elif action == 'monster':
         process_character(os.path.join(SRC_PATH, 'monster', '通用'))
         if len(personInfos) != 0:
-            export_per_file(os.path.join(RES_PATH, 'monster.per'))
+            export_per_file(os.path.join(datasPath, 'monster.per'))
     else:
         useage()
 
