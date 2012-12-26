@@ -135,6 +135,8 @@ def pack_res(path, exts = ['.tex', '.bin', '.per', '.map']):
 
 def main():
     for dir in filter(lambda dir:os.path.isdir(os.path.join(RES_PATH, dir)), os.listdir(RES_PATH)):
+        if dir in ['map', 'datas']:
+            continue
         resPath = os.path.join(RES_PATH, dir)
         decompress_file(os.path.join(resPath, "info.bin"))
         bin = load_bin(os.path.join(resPath, "info.bin"))
