@@ -27,11 +27,11 @@ def generate_map(sceneName, path):
     assert len(packIndex) == 1, '地图目录名不规范，必须以纯数字开头'
     tileData = {}
     objectData = {}
-    width, height = identify_image(tileFile)[:2]
-    mapHeader = NmpFileHeader(size=32, version=100, width=width, height=height, unknown='')
+    imageWidth, imageHeight = identify_image(tileFile)[:2]
+    mapHeader = NmpFileHeader(size=32, version=100, width=imageWidth/32, height=imageHeight/64, unknown='')
 
-    for y in range(mapHeader.height / 64):
-        for x in range(mapHeader.width / 32):
+    for y in range(mapHeader.height):
+        for x in range(mapHeader.width):
             if (y % 4 == 0) and (x % 2 == 0):
                 imageIndex = '{0:05d}{1:02d}{2:02d}'.format(1, y/4, x/2)
                 tileData[(x,y)] = int(imageIndex)
@@ -46,8 +46,8 @@ def generate_map(sceneName, path):
 
     with open(path, 'wb') as f:
         f.write(struct.pack(NmpFileHeader.struct_format, *mapHeader))
-        for y in range(mapHeader.height / 64):
-            for x in range(mapHeader.width / 32):
+        for y in range(mapHeader.height):
+            for x in range(mapHeader.width):
                 flag = 0
                 if (x,y) in tileData:
                     flag |= WOOOL_FLAG_TILE
