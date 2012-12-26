@@ -126,7 +126,7 @@ def save_bin(binData, path):
                     for j in range(blockNum):
                         f.write(struct.pack(BlockInfo.struct_format, *blockInfos[j]))
 
-def pack_res(path, exts = ['.tex', '.bin', '.per']):
+def pack_res(path, exts = ['.tex', '.bin', '.per', '.map']):
     with zipfile.ZipFile(path, 'w') as reszip:
         for base, dirs, files in os.walk(RES_PATH):
             for file in files:
