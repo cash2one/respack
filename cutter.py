@@ -5,6 +5,7 @@ import shutil
 import sys
 import math
 import winsound
+from multiprocessing import Pool, Manager, cpu_count
 from collections import namedtuple, OrderedDict
 from packer import pack_res
 from helper import *
@@ -15,13 +16,16 @@ WOOOL_FLAG_TILE = 4
 WOOOL_FLAG_OBJECT = 8
 WOOOL_FLAG_UNKNOW = 16
 
+#最大并发进程数=cpu数量
+MAX_PROCESS = cpu_count()
+#特定的地图包不生成地图文件
+IGNORED_MAPS = []
+
 NmpFileHeader = namedtuple('NmpFileHeader', 'size version width height unknown')
 NmpFileHeader.struct_format = '4I16s'
 
-ignoredMaps = []
-
 def generate_map(sceneName, path):
-    if sceneName in ignoredMaps:
+    if sceneName in IGNORED_MAPS:
         return
     tileFile = os.path.join(RES_PATH, 'tile-{0}'.format(multi_get_letter(sceneName)), '00001.png')
     if not os.path.exists(tileFile):
@@ -31,6 +35,7 @@ def generate_map(sceneName, path):
     tileData = {}
     objectData = {}
     imageWidth, imageHeight = identify_image(tileFile)[:2]
+    os.remove(tileFile)
     mapHeader = NmpFileHeader(size=32, version=100, width=imageWidth / 64, height=imageHeight / 32, unknown='')
 
     for y in range(mapHeader.height):
@@ -39,12 +44,16 @@ def generate_map(sceneName, path):
                 imageIndex = '{0:05d}{1:02d}{2:02d}'.format(1, y / 4, x / 2)
                 tileData[(x, y)] = int(imageIndex)
 
-    for file in glob.glob(os.path.join(RES_PATH, 'obj-{0}'.format(multi_get_letter(sceneName)), '*-000001.png')):
+    for file in glob.glob(os.path.join(RES_PATH, 'obj-{0}'.format(multi_get_letter(sceneName)), '*.png')):
+        if not file.endswith('-000001.png'):
+            os.remove(file)
+            continue
         w, h, raw_width, raw_height, offset_x, offset_y = identify_image(file)
         for i in range(int(math.ceil(w / 64.0))):
             x, y = offset_x / 64 + i, (h + offset_y) / 32 - 1
             imageIndex = '{0}{1:02d}{2:02d}'.format(file.split(os.sep)[-1][:-11], 0, i)
             objectData[(x, y)] = (int(imageIndex), h)
+        os.remove(file)
 
     with open(path, 'wb') as f:
         f.write(struct.pack(NmpFileHeader.struct_format, *mapHeader))
@@ -121,26 +130,24 @@ def process_map(path):
     mapPath = os.path.join(RES_PATH, 'map')
     if not os.path.exists(mapPath):
         os.makedirs(mapPath)
-    generate_map(sceneName, os.path.join(mapPath, '{0}.map'.format(multi_get_letter(sceneName))))
+    generate_map(sceneName, os.path.join(mapPath, '__{0}.map'.format(multi_get_letter(sceneName))))
 
 
 def process_scene(path):
+    pool = Pool(processes=MAX_PROCESS)
     for dir in filter(lambda dir: os.path.isdir(os.path.join(path, dir)), os.listdir(path)):
-        process_map(os.path.join(path, dir))
+        pool.apply_async(process_map, (os.path.join(path, dir), ))
+    pool.close()
+    pool.join()
 
 
 PersonInfo = namedtuple('PersonInfo', 'name actions')
 ActionInfo = namedtuple('ActionInfo', 'imagePackName actionIndex directs')
 DirectionInfo = namedtuple('DirectionInfo', 'images')
-personInfos = OrderedDict()
 
-def process_character(path):
-    global personInfos
-    prefixMap = {'角色': 'human', '魔法': 'magic', '武器': 'weapon', 'npc': 'npc'}
+def process_character(path, packName, personInfos):
+    print '正在处理{1}{0}...'.format(*path.split(os.sep)[-2:])
     actionTuple = ('出生', '待机', '采集', '跑步', '跳斩', '走路', '物理攻击', '魔法攻击', '骑乘待机', '骑乘跑动')
-    resType = path.split(os.sep)[-2]
-    if resType  not in prefixMap.keys():
-        return
     for  (dirPath, dirNames, fileNames) in os.walk(path):
         if len(dirPath.split(os.sep)) != 5:
             continue
@@ -149,11 +156,12 @@ def process_character(path):
             continue
         actionIndex = actionTuple.index(action)
         if name not in personInfos:
-            personInfos[name] = PersonInfo(name=name, actions={})
+            personInfos[name] = PersonInfo(name=name, actions=OrderedDict())
         personInfo = personInfos[name]
 
         if action not in personInfo.actions:
-            personInfo.actions[action] = ActionInfo(imagePackName=prefixMap[resType], actionIndex=actionIndex, directs={})
+            personInfo.actions[action] = ActionInfo(imagePackName=packName, actionIndex=actionIndex,
+                directs=OrderedDict())
         actionInfo = personInfo.actions[action]
 
         for fileName in fileNames:
@@ -169,7 +177,7 @@ def process_character(path):
             directInfo = actionInfo.directs[directIndex]
             if imageIndex not in directInfo.images:
                 directInfo.images.append(imageIndex)
-            destPath = os.path.join(RES_PATH, prefixMap[resType], imageIndex)
+            destPath = os.path.join(RES_PATH, packName, imageIndex)
             force_directory(destPath)
             destFile = os.path.join(destPath, '000001{0}'.format(fileName[-4:]))
             shutil.copyfile(os.path.join(dirPath, fileName), destFile)
@@ -182,10 +190,10 @@ def process_character(path):
                 trim_image(destFile)
 
 
-def export_per_file(path):
+def export_per_file(path, personInfos):
     with open(path, 'wb') as f:
         f.write(struct.pack('I', len(personInfos)))
-        for personInfo in personInfos.values():
+        for name, personInfo in sorted(personInfos.items()):
             f.write(struct.pack('32s', personInfo.name))
             f.write(struct.pack('I', len(personInfo.actions)))
             for actionInfo in personInfo.actions.values():
@@ -199,52 +207,40 @@ def export_per_file(path):
 
 
 def useage():
-    print "Usage: cutter.py [scene|char|magic|weapon|npc]"
+    print "Usage: cutter.py [scene|human|magic|weapon|npc]"
 
 
 def main():
     if len(sys.argv) != 2:
         useage()
         exit(0)
-    datasPath = os.path.join(RES_PATH, 'datas')
-    if not os.path.exists(datasPath):
-        os.makedirs(datasPath)
     action = sys.argv[1]
+    dirNames = { 'human': '角色', 'magic': '魔法', 'weapon': '武器', 'npc': 'npc'}
     if action == 'scene':
         process_scene(os.path.join(SRC_PATH, '场景'))
+        pool = Pool(processes=MAX_PROCESS)
         for dir in filter(lambda dir: os.path.isdir(os.path.join(RES_PATH, dir)) and
                                       (dir.startswith('tile-') or dir.startswith('obj-')), os.listdir(RES_PATH)):
-            pack_res(os.path.join(RES_PATH, dir))
-    elif action == 'char':
-        process_character(os.path.join(SRC_PATH, '角色', '通用'))
-        process_character(os.path.join(SRC_PATH, '角色', '战士'))
-        process_character(os.path.join(SRC_PATH, '角色', '法师'))
-        process_character(os.path.join(SRC_PATH, '角色', '道士'))
+            pool.apply_async(pack_res, (os.path.join(RES_PATH, dir), ))
+        pool.close()
+        pool.join()
+    elif action in dirNames:
+        manager = Manager()
+        personInfos = manager.dict()
+        pool = Pool(processes=MAX_PROCESS)
+        for dir in ['战士', '法师', '道士', '通用']:
+            pool.apply_async(process_character, args=(os.path.join(SRC_PATH, dirNames[action], dir), action, personInfos))
+        pool.close()
+        pool.join()
         if len(personInfos) != 0:
-            export_per_file(os.path.join(datasPath, 'human.per'))
-            pack_res(os.path.join(RES_PATH, 'human'))
-    elif action == 'magic':
-        process_character(os.path.join(SRC_PATH, '魔法', '战士'))
-        process_character(os.path.join(SRC_PATH, '魔法', '法师'))
-        process_character(os.path.join(SRC_PATH, '魔法', '道士'))
-        if len(personInfos) != 0:
-            export_per_file(os.path.join(datasPath, 'magic.per'))
-            pack_res(os.path.join(RES_PATH, 'magic'))
-    elif action == 'weapon':
-        process_character(os.path.join(SRC_PATH, '武器', '战士'))
-        process_character(os.path.join(SRC_PATH, '武器', '法师'))
-        process_character(os.path.join(SRC_PATH, '武器', '道士'))
-        if len(personInfos) != 0:
-            export_per_file(os.path.join(datasPath, 'weapon.per'))
-            pack_res(os.path.join(RES_PATH, 'weapon'))
-    elif action == 'npc':
-        process_character(os.path.join(SRC_PATH, 'npc', '通用'))
-        if len(personInfos) != 0:
-            export_per_file(os.path.join(datasPath, 'npc.per'))
-            pack_res(os.path.join(RES_PATH, 'npc'))
+            datasPath = os.path.join(RES_PATH, 'datas')
+            if not os.path.exists(datasPath):
+                os.makedirs(datasPath)
+            export_per_file(os.path.join(datasPath, '{0}.per'.format(action)), personInfos)
+            pack_res(os.path.join(RES_PATH, action))
     else:
         useage()
-    winsound.PlaySound('complete.wav', winsound.SND_FILENAME)
 
 if __name__ == '__main__':
     main()
+    winsound.PlaySound('complete.wav', winsound.SND_FILENAME)

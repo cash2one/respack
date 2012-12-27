@@ -1,2 +1,2 @@
-@cutter.py char
+@cutter.py human
 @pause

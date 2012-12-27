@@ -4,6 +4,7 @@ import os
 import zlib
 import struct
 import math
+import glob
 from collections import namedtuple, OrderedDict
 from helper import *
 
@@ -54,6 +55,7 @@ def dds_to_tex(path):
         blockInfos.append(blockInfo)
         with open(path.replace('.dds', '.tex'), 'wb') as texfd:
             texfd.write(buffer)
+        os.remove(path)
         return blockInfos
 
 
@@ -61,11 +63,9 @@ def folder_to_tex(path):
     if os.path.isdir(path):
         buffer = ''
         blockInfos = []
-        for ddsfile in os.listdir(path):
-            if not ddsfile.endswith('.dds'):
-                continue
-            w, h = get_size(os.path.join(path, ddsfile))
-            with open(os.path.join(path, ddsfile), 'rb') as ddsfd:
+        for ddsfile in glob.glob(os.path.join(path, '*.dds')):
+            w, h = get_size(ddsfile)
+            with open(ddsfile, 'rb') as ddsfd:
                 ddsfd.seek(128)
                 blockData = zlib.compress(ddsfd.read())
                 blockInfo = BlockInfo(
@@ -77,6 +77,7 @@ def folder_to_tex(path):
         texfile = "{0}\\{1}.tex".format(os.path.abspath(os.path.join(path, os.path.pardir)), os.path.basename(path))
         with open(texfile, 'wb') as texfd:
             texfd.write(buffer)
+        shutil.rmtree(path)
         return blockInfos
 
 
@@ -133,6 +134,7 @@ def pack_res(path):
             else:
                 to_dds(imagePath)
                 image['blocks'] = dds_to_tex(imagePath.replace(fileExt, '.dds'))
+            os.remove(imagePath)
             image['image'] = imageInfo
             images.append(image)
         bin.frames[index] = images

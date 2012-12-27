@@ -16,17 +16,16 @@ def find_leading_num(name):
 
 def compress_file(path):
     if os.path.exists(path):
-        with open(path, 'rb') as f:
-            buffer = zlib.compress(f.read())
         fileSize = os.path.getsize(path)
-        with open(path, 'wb') as f:
-            f.write(struct.pack('I', fileSize))
-            f.write(buffer)
+        with open(path, 'rb') as originFile, open(path, 'wb') as comressedFile:
+            comressedFile.write(struct.pack('I', fileSize))
+            comressedFile.write(zlib.compress(originFile.read()))
 
 
 def identify_image(filename):
     output = subprocess.check_output('identify.exe -format %w,%h,%g {0}'.format(filename))
     return [int(item) for item in re.search(r'(\d+),(\d+),(\d+)x(\d+)([\+\-]\d+)([\+\-]\d+)', output).groups()]
+
 
 def get_size(filename):
     return identify_image(filename)[:2]
@@ -56,7 +55,7 @@ def crop_image(filename):
     os.system("convert +repage -crop 256x256 {0} {1}\\%02d{2}".format(filename, dirname, os.path.splitext(filename)[1]))
 
 
-def trim_image(path, ddsoptimized = True):
+def trim_image(path, ddsoptimized=True):
     if os.path.exists(path):
         os.system('convert.exe -trim {0} {0}'.format(path))
         if ddsoptimized: #dds格式需确保宽高是4的倍数，否则图片会被拉升导致模糊
@@ -64,7 +63,8 @@ def trim_image(path, ddsoptimized = True):
             extended_width = w if w % 4 == 0 else w + (4 - w % 4)
             extended_height = h if h % 4 == 0 else h + (4 - h % 4)
             old_page_info = subprocess.check_output("identify.exe -format %g {0}".format(path)).rstrip()
-            os.system('convert -gravity northwest -background transparent -extent {0}x{1} -repage {2} {3} {3}'.format(extended_width, extended_height, old_page_info, path))
+            os.system('convert -gravity northwest -background transparent -extent {0}x{1} -repage {2} {3} {3}'.format(
+                extended_width, extended_height, old_page_info, path))
 
 
 def put_images_into_folder(path):
@@ -99,6 +99,7 @@ def multi_get_letter(str_input):
     for one_unicode in unicode_str:
         return_list.append(single_get_first(one_unicode))
     return "".join(return_list)
+
 
 def single_get_first(unicode1):
     str1 = unicode1.encode('gbk')
