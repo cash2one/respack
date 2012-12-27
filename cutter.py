@@ -4,6 +4,7 @@ import glob
 import shutil
 import sys
 import math
+import winsound
 from collections import namedtuple, OrderedDict
 from packer import pack_res
 from helper import *
@@ -243,6 +244,7 @@ def main():
             pack_res(os.path.join(RES_PATH, 'npc'))
     else:
         useage()
+    winsound.PlaySound('complete.wav', winsound.SND_FILENAME)
 
 if __name__ == '__main__':
     main()
