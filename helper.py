@@ -18,13 +18,16 @@ def compress_file(path):
     if os.path.exists(path):
         with open(path, 'rb') as f:
             buffer = zlib.compress(f.read())
+        fileSize = os.path.getsize(path)
         with open(path, 'wb') as f:
+            f.write(struct.pack('I', fileSize))
             f.write(buffer)
 
 
 def decompress_file(path):
     if os.path.exists(path):
         with open(path, 'rb') as f:
+            f.seek(struct.calcsize('I'))
             buffer = zlib.decompress(f.read())
         with open(path, 'wb') as f:
             f.write(buffer)

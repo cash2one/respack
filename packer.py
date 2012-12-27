@@ -4,8 +4,7 @@ import os
 import zlib
 import struct
 import math
-import zipfile
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 from helper import *
 
 ImageInfo = namedtuple('ImageInfo',
@@ -85,7 +84,7 @@ def load_bin(path):
     bin = namedtuple('InfoBin', 'imageFormat frameNum frames')
     bin.imageFormat = PF_DXT3
     bin.frameNum = 0
-    bin.frames = {}
+    bin.frames = OrderedDict()
     if os.path.exists(path):
         with open(path, 'rb') as f:
             bin.imageFormat = struct.unpack('I', f.read(struct.calcsize('I')))[0]
@@ -105,18 +104,18 @@ def load_bin(path):
                         f.read(struct.calcsize(BlockInfo.struct_format)))) for k in range(blockNum)]
                     image['blocks'] = blocks
                     images.append(image)
-                bin.frames[str(index)] = images
+                bin.frames[index] = images
     return bin
 
 
 def save_bin(binData, path):
     with open(path, 'wb') as f:
         f.write(struct.pack('I', binData.imageFormat))
-        f.write(struct.pack('I', len(binData.frames.keys())))
+        f.write(struct.pack('I', len(binData.frames)))
         for index in binData.frames:
             imageNum = len(binData.frames[index])
             f.write(struct.pack('I', imageNum))
-            f.write(struct.pack('I', int(index)))
+            f.write(struct.pack('I', index))
             for i in range(imageNum):
                 imageInfo = binData.frames[index][i]['image']
                 f.write(struct.pack(ImageInfo.struct_format, *imageInfo))
@@ -126,59 +125,46 @@ def save_bin(binData, path):
                     for j in range(blockNum):
                         f.write(struct.pack(BlockInfo.struct_format, *blockInfos[j]))
 
-def pack_res(path, exts = ['.tex', '.bin', '.per', '.map']):
-    with zipfile.ZipFile(path, 'w') as reszip:
-        for base, dirs, files in os.walk(RES_PATH):
-            for file in files:
-                if file[-4:] in exts:
-                    reszip.write(os.path.join(base, file))
 
-def main():
-    for dir in filter(lambda dir:os.path.isdir(os.path.join(RES_PATH, dir)), os.listdir(RES_PATH)):
-        if dir in ['map', 'datas']:
+def pack_res(path):
+    decompress_file(os.path.join(path, "info.bin"))
+    bin = load_bin(os.path.join(path, "info.bin"))
+    for (dirPath, dirNames, fileNames) in os.walk(path):
+        if len(dirPath.split(os.sep)) != 3:
             continue
-        resPath = os.path.join(RES_PATH, dir)
-        decompress_file(os.path.join(resPath, "info.bin"))
-        bin = load_bin(os.path.join(resPath, "info.bin"))
-        for (dirPath, dirNames, fileNames) in os.walk(resPath):
-            if len(dirPath.split(os.sep)) != 3:
+        index = int(dirPath.split(os.sep)[-1])
+        images = bin.frames[index] if index in bin.frames else []
+        for fileName in fileNames:
+            fileExt = os.path.splitext(fileName)[1]
+            if fileExt not in ['.tga', '.png']:
                 continue
-            index = dirPath.split(os.sep)[-1].lstrip('0')
-            images = bin.frames[index] if index in bin.frames else []
-            for fileName in fileNames:
-                fileExt = os.path.splitext(fileName)[1]
-                if fileExt not in ['.tga', '.png']:
-                    continue
-                if os.path.exists(os.path.join(dirPath, fileName.replace(fileExt, '.tex')))\
-                and index in bin.frames:
-                    continue
-                image = {}
-                imagePath = os.path.join(dirPath, fileName)
-                w, h = get_size(imagePath)
-                raw_width, raw_height, offset_x, offset_y = get_rawsize_offset(imagePath)
-                if offset_x < 0 or offset_y < 0:
-                    continue
-                imageInfo = ImageInfo(
-                    width=raw_width if raw_width else w + offset_x,
-                    height=raw_height if raw_height else h + offset_y,
-                    dataWidth=w,
-                    dataHeight=h,
-                    offsetX=offset_x,
-                    offsetY=offset_y,
-                    blockX=int(math.ceil(w / 256.0)) if w > 256 else 1,
-                    blockY=int(math.ceil(h / 256.0)) if h > 256 else 1)
-                if w > 256 or h > 256:
-                    crop_image(imagePath)
-                    to_dds(os.path.join(dirPath, os.path.basename(imagePath)[:-4], '*{}'.format(fileExt)))
-                    image['blocks'] = folder_to_tex(os.path.join(dirPath, os.path.basename(imagePath)[:-4]))
-                else:
-                    to_dds(imagePath)
-                    image['blocks'] = dds_to_tex(imagePath.replace(fileExt, '.dds'))
-                image['image'] = imageInfo
-                images.append(image)
-            bin.frames[index] = images
-        save_bin(bin, os.path.join(resPath, "info.bin"))
-        compress_file(os.path.join(resPath, "info.bin"))
-    pack_res('res.zip')
-if __name__ == '__main__':
-    main()
+            if os.path.exists(os.path.join(dirPath, fileName.replace(fileExt, '.tex')))\
+            and index in bin.frames:
+                continue
+            image = {}
+            imagePath = os.path.join(dirPath, fileName)
+            w, h = get_size(imagePath)
+            raw_width, raw_height, offset_x, offset_y = get_rawsize_offset(imagePath)
+            if offset_x < 0 or offset_y < 0:
+                continue
+            imageInfo = ImageInfo(
+                width=raw_width if raw_width else w + offset_x,
+                height=raw_height if raw_height else h + offset_y,
+                dataWidth=w,
+                dataHeight=h,
+                offsetX=offset_x,
+                offsetY=offset_y,
+                blockX=int(math.ceil(w / 256.0)) if w > 256 else 1,
+                blockY=int(math.ceil(h / 256.0)) if h > 256 else 1)
+            if w > 256 or h > 256:
+                crop_image(imagePath)
+                to_dds(os.path.join(dirPath, os.path.basename(imagePath)[:-4], '*{}'.format(fileExt)))
+                image['blocks'] = folder_to_tex(os.path.join(dirPath, os.path.basename(imagePath)[:-4]))
+            else:
+                to_dds(imagePath)
+                image['blocks'] = dds_to_tex(imagePath.replace(fileExt, '.dds'))
+            image['image'] = imageInfo
+            images.append(image)
+        bin.frames[index] = images
+    save_bin(bin, os.path.join(path, "info.bin"))
+    compress_file(os.path.join(path, "info.bin"))
