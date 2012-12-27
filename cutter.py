@@ -16,8 +16,8 @@ WOOOL_FLAG_TILE = 4
 WOOOL_FLAG_OBJECT = 8
 WOOOL_FLAG_UNKNOW = 16
 
-#最大并发进程数=cpu数量
-MAX_PROCESS = cpu_count()
+#最大并发进程数
+MAX_PROCESS = cpu_count() * 2
 #特定的地图包不生成地图文件
 IGNORED_MAPS = []
 
@@ -145,49 +145,55 @@ PersonInfo = namedtuple('PersonInfo', 'name actions')
 ActionInfo = namedtuple('ActionInfo', 'imagePackName actionIndex directs')
 DirectionInfo = namedtuple('DirectionInfo', 'images')
 
-def process_character(path, packName, personInfos):
-    print '正在处理{1}{0}...'.format(*path.split(os.sep)[-2:])
+def process_action(dirPath, fileNames, packName, personInfos):
     actionTuple = ('出生', '待机', '采集', '跑步', '跳斩', '走路', '物理攻击', '魔法攻击', '骑乘待机', '骑乘跑动')
+    name, action = dirPath.split(os.sep)[-2:]
+    if action not in actionTuple:
+        return
+    print '正在处理{0}...'.format(dirPath)
+    actionIndex = actionTuple.index(action)
+    if name not in personInfos:
+        personInfos[name] = PersonInfo(name=name, actions=OrderedDict())
+    personInfo = personInfos[name]
+
+    if action not in personInfo.actions:
+        personInfo.actions[action] = ActionInfo(imagePackName=packName, actionIndex=actionIndex,
+            directs=OrderedDict())
+    actionInfo = personInfo.actions[action]
+
+    for fileName in fileNames:
+        if fileName[-4:] not in ['.png', '.tga']:
+            continue
+        directIndex = int(fileName[0])
+        frameIndex = fileName[-6:-4]
+        leading_num = find_leading_num(name)
+        assert len(leading_num) == 1, '角色目录名不规范，必须以纯数字开头'
+        imageIndex = '{0:03d}{1:02d}{2:02d}{3}'.format(int(leading_num[0]), actionIndex, directIndex, frameIndex)
+        if directIndex not in actionInfo.directs:
+            actionInfo.directs[directIndex] = DirectionInfo(images=[])
+        directInfo = actionInfo.directs[directIndex]
+        if imageIndex not in directInfo.images:
+            directInfo.images.append(imageIndex)
+        destPath = os.path.join(RES_PATH, packName, imageIndex)
+        force_directory(destPath)
+        destFile = os.path.join(destPath, '000001{0}'.format(fileName[-4:]))
+        shutil.copyfile(os.path.join(dirPath, fileName), destFile)
+        if destFile.endswith('.tga'):
+            pngFile = destFile.replace('.tga', '.png')
+            os.system('convert.exe {0} {1}'.format(destFile, pngFile))
+            trim_image(pngFile)
+            os.remove(destFile)
+        else:
+            trim_image(destFile)
+
+def process_character(path, packName, personInfos):
+    pool = Pool(processes=MAX_PROCESS)
     for  (dirPath, dirNames, fileNames) in os.walk(path):
         if len(dirPath.split(os.sep)) != 5:
             continue
-        name, action = dirPath.split(os.sep)[-2:]
-        if action not in actionTuple:
-            continue
-        actionIndex = actionTuple.index(action)
-        if name not in personInfos:
-            personInfos[name] = PersonInfo(name=name, actions=OrderedDict())
-        personInfo = personInfos[name]
-
-        if action not in personInfo.actions:
-            personInfo.actions[action] = ActionInfo(imagePackName=packName, actionIndex=actionIndex,
-                directs=OrderedDict())
-        actionInfo = personInfo.actions[action]
-
-        for fileName in fileNames:
-            if fileName[-4:] not in ['.png', '.tga']:
-                continue
-            directIndex = int(fileName[0])
-            frameIndex = fileName[-6:-4]
-            leading_num = find_leading_num(name)
-            assert len(leading_num) == 1, '角色目录名不规范，必须以纯数字开头'
-            imageIndex = '{0:03d}{1:02d}{2:02d}{3}'.format(int(leading_num[0]), actionIndex, directIndex, frameIndex)
-            if directIndex not in actionInfo.directs:
-                actionInfo.directs[directIndex] = DirectionInfo(images=[])
-            directInfo = actionInfo.directs[directIndex]
-            if imageIndex not in directInfo.images:
-                directInfo.images.append(imageIndex)
-            destPath = os.path.join(RES_PATH, packName, imageIndex)
-            force_directory(destPath)
-            destFile = os.path.join(destPath, '000001{0}'.format(fileName[-4:]))
-            shutil.copyfile(os.path.join(dirPath, fileName), destFile)
-            if destFile.endswith('.tga'):
-                pngFile = destFile.replace('.tga', '.png')
-                os.system('convert.exe {0} {1}'.format(destFile, pngFile))
-                trim_image(pngFile)
-                os.remove(destFile)
-            else:
-                trim_image(destFile)
+        pool.apply_async(process_action, args=(dirPath, fileNames, packName, personInfos))
+    pool.close()
+    pool.join()
 
 
 def export_per_file(path, personInfos):
@@ -227,11 +233,8 @@ def main():
     elif action in dirNames:
         manager = Manager()
         personInfos = manager.dict()
-        pool = Pool(processes=MAX_PROCESS)
         for dir in ['战士', '法师', '道士', '通用']:
-            pool.apply_async(process_character, args=(os.path.join(SRC_PATH, dirNames[action], dir), action, personInfos))
-        pool.close()
-        pool.join()
+            process_character(os.path.join(SRC_PATH, dirNames[action], dir), action, personInfos)
         if len(personInfos) != 0:
             datasPath = os.path.join(RES_PATH, 'datas')
             if not os.path.exists(datasPath):
