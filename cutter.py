@@ -145,7 +145,7 @@ def process_character(path):
         personInfo = personInfos[name]
 
         if action not in personInfo.actions:
-            personInfo.actions[action] = ActionInfo(imagePackName=os.path.join('data', prefixMap[resType]), actionIndex=actionIndex, directs={})
+            personInfo.actions[action] = ActionInfo(imagePackName=prefixMap[resType], actionIndex=actionIndex, directs={})
         actionInfo = personInfo.actions[action]
 
         for fileName in fileNames:
