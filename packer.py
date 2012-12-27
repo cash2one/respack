@@ -80,34 +80,6 @@ def folder_to_tex(path):
         return blockInfos
 
 
-def load_bin(path):
-    bin = namedtuple('InfoBin', 'imageFormat frameNum frames')
-    bin.imageFormat = PF_DXT3
-    bin.frameNum = 0
-    bin.frames = OrderedDict()
-    if os.path.exists(path):
-        with open(path, 'rb') as f:
-            bin.imageFormat = struct.unpack('I', f.read(struct.calcsize('I')))[0]
-            assert bin.imageFormat == PF_A8R8G8B8 or bin.imageFormat == PF_DXT1 or bin.imageFormat == PF_DXT3 or bin.imageFormat == PF_DXT5
-            bin.frameNum = struct.unpack('I', f.read(struct.calcsize('I')))[0]
-            for i in range(bin.frameNum):
-                imageNum = struct.unpack('I', f.read(struct.calcsize('I')))[0]
-                index = struct.unpack('I', f.read(struct.calcsize('I')))[0]
-                images = []
-                for j in range(imageNum):
-                    image = {}
-                    imageInfo = ImageInfo(*struct.unpack(ImageInfo.struct_format,
-                        f.read(struct.calcsize(ImageInfo.struct_format))))
-                    image['image'] = imageInfo
-                    blockNum = imageInfo.blockX * imageInfo.blockY
-                    blocks = [BlockInfo(*struct.unpack(BlockInfo.struct_format,
-                        f.read(struct.calcsize(BlockInfo.struct_format)))) for k in range(blockNum)]
-                    image['blocks'] = blocks
-                    images.append(image)
-                bin.frames[index] = images
-    return bin
-
-
 def save_bin(binData, path):
     with open(path, 'wb') as f:
         f.write(struct.pack('I', binData.imageFormat))
@@ -120,26 +92,24 @@ def save_bin(binData, path):
                 imageInfo = binData.frames[index][i]['image']
                 f.write(struct.pack(ImageInfo.struct_format, *imageInfo))
                 blockNum = imageInfo.blockX * imageInfo.blockY
-                if blockNum >= 1:
-                    blockInfos = binData.frames[index][i]['blocks']
-                    for j in range(blockNum):
-                        f.write(struct.pack(BlockInfo.struct_format, *blockInfos[j]))
+                blockInfos = binData.frames[index][i]['blocks']
+                for j in range(blockNum):
+                    f.write(struct.pack(BlockInfo.struct_format, *blockInfos[j]))
 
 
 def pack_res(path):
-    decompress_file(os.path.join(path, "info.bin"))
-    bin = load_bin(os.path.join(path, "info.bin"))
+    bin = namedtuple('InfoBin', 'imageFormat frameNum frames')
+    bin.imageFormat = PF_DXT3
+    bin.frameNum = 0
+    bin.frames = OrderedDict()
     for (dirPath, dirNames, fileNames) in os.walk(path):
         if len(dirPath.split(os.sep)) != 3:
             continue
         index = int(dirPath.split(os.sep)[-1])
-        images = bin.frames[index] if index in bin.frames else []
+        images = []
         for fileName in fileNames:
             fileExt = os.path.splitext(fileName)[1]
             if fileExt not in ['.tga', '.png']:
-                continue
-            if os.path.exists(os.path.join(dirPath, fileName.replace(fileExt, '.tex')))\
-            and index in bin.frames:
                 continue
             image = {}
             imagePath = os.path.join(dirPath, fileName)

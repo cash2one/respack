@@ -24,14 +24,6 @@ def compress_file(path):
             f.write(buffer)
 
 
-def decompress_file(path):
-    if os.path.exists(path):
-        with open(path, 'rb') as f:
-            f.seek(struct.calcsize('I'))
-            buffer = zlib.decompress(f.read())
-        with open(path, 'wb') as f:
-            f.write(buffer)
-
 def identify_image(filename):
     output = subprocess.check_output('identify.exe -format %w,%h,%g {0}'.format(filename))
     return [int(item) for item in re.search(r'(\d+),(\d+),(\d+)x(\d+)([\+\-]\d+)([\+\-]\d+)', output).groups()]

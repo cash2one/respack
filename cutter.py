@@ -169,9 +169,7 @@ def process_character(path):
             if imageIndex not in directInfo.images:
                 directInfo.images.append(imageIndex)
             destPath = os.path.join(RES_PATH, prefixMap[resType], imageIndex)
-            if os.path.exists(destPath):
-                shutil.rmtree(destPath)
-            os.makedirs(destPath)
+            force_directory(destPath)
             destFile = os.path.join(destPath, '000001{0}'.format(fileName[-4:]))
             shutil.copyfile(os.path.join(dirPath, fileName), destFile)
             if destFile.endswith('.tga'):
@@ -223,26 +221,26 @@ def main():
         process_character(os.path.join(SRC_PATH, '角色', '道士'))
         if len(personInfos) != 0:
             export_per_file(os.path.join(datasPath, 'human.per'))
-        pack_res(os.path.join(RES_PATH, 'human'))
+            pack_res(os.path.join(RES_PATH, 'human'))
     elif action == 'magic':
         process_character(os.path.join(SRC_PATH, '魔法', '战士'))
         process_character(os.path.join(SRC_PATH, '魔法', '法师'))
         process_character(os.path.join(SRC_PATH, '魔法', '道士'))
         if len(personInfos) != 0:
             export_per_file(os.path.join(datasPath, 'magic.per'))
-        pack_res(os.path.join(RES_PATH, 'magic'))
+            pack_res(os.path.join(RES_PATH, 'magic'))
     elif action == 'weapon':
         process_character(os.path.join(SRC_PATH, '武器', '战士'))
         process_character(os.path.join(SRC_PATH, '武器', '法师'))
         process_character(os.path.join(SRC_PATH, '武器', '道士'))
         if len(personInfos) != 0:
             export_per_file(os.path.join(datasPath, 'weapon.per'))
-        pack_res(os.path.join(RES_PATH, 'weapon'))
+            pack_res(os.path.join(RES_PATH, 'weapon'))
     elif action == 'npc':
         process_character(os.path.join(SRC_PATH, 'npc', '通用'))
         if len(personInfos) != 0:
             export_per_file(os.path.join(datasPath, 'npc.per'))
-        pack_res(os.path.join(RES_PATH, 'npc'))
+            pack_res(os.path.join(RES_PATH, 'npc'))
     else:
         useage()
 
