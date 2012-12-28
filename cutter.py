@@ -5,7 +5,7 @@ import shutil
 import sys
 import math
 import winsound
-from multiprocessing import Pool, Manager, cpu_count
+import multiprocessing as mp
 from collections import namedtuple, OrderedDict
 from packer import pack_res
 from helper import *
@@ -16,8 +16,6 @@ WOOOL_FLAG_TILE = 4
 WOOOL_FLAG_OBJECT = 8
 WOOOL_FLAG_UNKNOW = 16
 
-#最大并发进程数
-MAX_PROCESS = cpu_count() * 2
 #特定的地图包不生成地图文件
 IGNORED_MAPS = []
 
@@ -134,7 +132,7 @@ def process_map(path):
 
 
 def process_scene(path):
-    pool = Pool(processes=MAX_PROCESS)
+    pool = mp.Pool(processes=MAX_PROCESS)
     for dir in filter(lambda dir: os.path.isdir(os.path.join(path, dir)), os.listdir(path)):
         pool.apply_async(process_map, (os.path.join(path, dir), ))
     pool.close()
@@ -145,21 +143,13 @@ PersonInfo = namedtuple('PersonInfo', 'name actions')
 ActionInfo = namedtuple('ActionInfo', 'imagePackName actionIndex directs')
 DirectionInfo = namedtuple('DirectionInfo', 'images')
 
-def process_action(dirPath, fileNames, packName, personInfos):
-    actionTuple = ('出生', '待机', '采集', '跑步', '跳斩', '走路', '物理攻击', '魔法攻击', '骑乘待机', '骑乘跑动')
-    name, action = dirPath.split(os.sep)[-2:]
-    if action not in actionTuple:
-        return
+def process_action(dirPath, fileNames, name, action, packName):
     print '正在处理{0}...'.format(dirPath)
+    actionTuple = ('出生', '待机', '采集', '跑步', '跳斩', '走路', '物理攻击', '魔法攻击', '骑乘待机', '骑乘跑动')
+    if action not in actionTuple:
+        return None
     actionIndex = actionTuple.index(action)
-    if name not in personInfos:
-        personInfos[name] = PersonInfo(name=name, actions=OrderedDict())
-    personInfo = personInfos[name]
-
-    if action not in personInfo.actions:
-        personInfo.actions[action] = ActionInfo(imagePackName=packName, actionIndex=actionIndex,
-            directs=OrderedDict())
-    actionInfo = personInfo.actions[action]
+    actionInfo = ActionInfo(imagePackName=packName, actionIndex=actionIndex, directs=OrderedDict())
 
     for fileName in fileNames:
         if fileName[-4:] not in ['.png', '.tga']:
@@ -175,7 +165,7 @@ def process_action(dirPath, fileNames, packName, personInfos):
         if imageIndex not in directInfo.images:
             directInfo.images.append(imageIndex)
         destPath = os.path.join(RES_PATH, packName, imageIndex)
-        force_directory(destPath)
+        os.makedirs(destPath)
         destFile = os.path.join(destPath, '000001{0}'.format(fileName[-4:]))
         shutil.copyfile(os.path.join(dirPath, fileName), destFile)
         if destFile.endswith('.tga'):
@@ -185,15 +175,25 @@ def process_action(dirPath, fileNames, packName, personInfos):
             os.remove(destFile)
         else:
             trim_image(destFile)
+    return actionInfo
+
 
 def process_character(path, packName, personInfos):
-    pool = Pool(processes=MAX_PROCESS)
+    pool = mp.Pool(processes=MAX_PROCESS)
+    deferedResult = {}
     for  (dirPath, dirNames, fileNames) in os.walk(path):
         if len(dirPath.split(os.sep)) != 5:
             continue
-        pool.apply_async(process_action, args=(dirPath, fileNames, packName, personInfos))
+        name, action = dirPath.split(os.sep)[-2:]
+        deferedResult[(name, action)] = pool.apply_async(process_action, (dirPath, fileNames, name, action, packName))
     pool.close()
     pool.join()
+    for (name, action), defered in deferedResult.items():
+        actionInfo = defered.get()
+        if actionInfo is not None:
+            if name not in personInfos:
+                personInfos[name] = PersonInfo(name=name, actions=OrderedDict())
+            personInfos[name].actions[action] = actionInfo
 
 
 def export_per_file(path, personInfos):
@@ -224,15 +224,12 @@ def main():
     dirNames = { 'human': '角色', 'magic': '魔法', 'weapon': '武器', 'npc': 'npc'}
     if action == 'scene':
         process_scene(os.path.join(SRC_PATH, '场景'))
-        pool = Pool(processes=MAX_PROCESS)
         for dir in filter(lambda dir: os.path.isdir(os.path.join(RES_PATH, dir)) and
                                       (dir.startswith('tile-') or dir.startswith('obj-')), os.listdir(RES_PATH)):
-            pool.apply_async(pack_res, (os.path.join(RES_PATH, dir), ))
-        pool.close()
-        pool.join()
+            pack_res(os.path.join(RES_PATH, dir))
     elif action in dirNames:
-        manager = Manager()
-        personInfos = manager.dict()
+        personInfos = {}
+        force_directory(os.path.join(RES_PATH, action))
         for dir in ['战士', '法师', '道士', '通用']:
             process_character(os.path.join(SRC_PATH, dirNames[action], dir), action, personInfos)
         if len(personInfos) != 0:

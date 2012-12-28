@@ -5,6 +5,7 @@ import zlib
 import struct
 import math
 import glob
+import multiprocessing as mp
 from collections import namedtuple, OrderedDict
 from helper import *
 
@@ -83,60 +84,66 @@ def folder_to_tex(path):
 
 def save_bin(binData, path):
     with open(path, 'wb') as f:
-        f.write(struct.pack('I', binData.imageFormat))
-        f.write(struct.pack('I', len(binData.frames)))
-        for index in binData.frames:
-            imageNum = len(binData.frames[index])
+        f.write(struct.pack('I', binData['imageFormat']))
+        f.write(struct.pack('I', len(binData['frames'])))
+        for index, images in binData['frames'].items():
+            imageNum = len(images)
             f.write(struct.pack('I', imageNum))
             f.write(struct.pack('I', index))
             for i in range(imageNum):
-                imageInfo = binData.frames[index][i]['image']
+                imageInfo = images[i]['image']
                 f.write(struct.pack(ImageInfo.struct_format, *imageInfo))
                 blockNum = imageInfo.blockX * imageInfo.blockY
-                blockInfos = binData.frames[index][i]['blocks']
+                blockInfos = images[i]['blocks']
                 for j in range(blockNum):
                     f.write(struct.pack(BlockInfo.struct_format, *blockInfos[j]))
 
 
+def pack_image(dirPath, fileNames):
+    images = []
+    for fileName in fileNames:
+        fileExt = os.path.splitext(fileName)[1]
+        if fileExt not in ['.tga', '.png']:
+            continue
+        image = {}
+        imagePath = os.path.join(dirPath, fileName)
+        w, h = get_size(imagePath)
+        raw_width, raw_height, offset_x, offset_y = get_rawsize_offset(imagePath)
+        if offset_x < 0 or offset_y < 0:
+            continue
+        imageInfo = ImageInfo(
+            width=raw_width if raw_width else w + offset_x,
+            height=raw_height if raw_height else h + offset_y,
+            dataWidth=w,
+            dataHeight=h,
+            offsetX=offset_x,
+            offsetY=offset_y,
+            blockX=int(math.ceil(w / 256.0)) if w > 256 else 1,
+            blockY=int(math.ceil(h / 256.0)) if h > 256 else 1)
+        if w > 256 or h > 256:
+            crop_image(imagePath)
+            to_dds(os.path.join(dirPath, os.path.basename(imagePath)[:-4], '*{}'.format(fileExt)))
+            image['blocks'] = folder_to_tex(os.path.join(dirPath, os.path.basename(imagePath)[:-4]))
+        else:
+            to_dds(imagePath)
+            image['blocks'] = dds_to_tex(imagePath.replace(fileExt, '.dds'))
+        os.remove(imagePath)
+        image['image'] = imageInfo
+        images.append(image)
+    return images
+
 def pack_res(path):
-    bin = namedtuple('InfoBin', 'imageFormat frameNum frames')
-    bin.imageFormat = PF_DXT3
-    bin.frameNum = 0
-    bin.frames = OrderedDict()
+    bin ={'imageFormat': PF_DXT3, 'frames': OrderedDict()}
+    pool = mp.Pool(processes=MAX_PROCESS)
+    frames = {}
     for (dirPath, dirNames, fileNames) in os.walk(path):
         if len(dirPath.split(os.sep)) != 3:
             continue
         index = int(dirPath.split(os.sep)[-1])
-        images = []
-        for fileName in fileNames:
-            fileExt = os.path.splitext(fileName)[1]
-            if fileExt not in ['.tga', '.png']:
-                continue
-            image = {}
-            imagePath = os.path.join(dirPath, fileName)
-            w, h = get_size(imagePath)
-            raw_width, raw_height, offset_x, offset_y = get_rawsize_offset(imagePath)
-            if offset_x < 0 or offset_y < 0:
-                continue
-            imageInfo = ImageInfo(
-                width=raw_width if raw_width else w + offset_x,
-                height=raw_height if raw_height else h + offset_y,
-                dataWidth=w,
-                dataHeight=h,
-                offsetX=offset_x,
-                offsetY=offset_y,
-                blockX=int(math.ceil(w / 256.0)) if w > 256 else 1,
-                blockY=int(math.ceil(h / 256.0)) if h > 256 else 1)
-            if w > 256 or h > 256:
-                crop_image(imagePath)
-                to_dds(os.path.join(dirPath, os.path.basename(imagePath)[:-4], '*{}'.format(fileExt)))
-                image['blocks'] = folder_to_tex(os.path.join(dirPath, os.path.basename(imagePath)[:-4]))
-            else:
-                to_dds(imagePath)
-                image['blocks'] = dds_to_tex(imagePath.replace(fileExt, '.dds'))
-            os.remove(imagePath)
-            image['image'] = imageInfo
-            images.append(image)
-        bin.frames[index] = images
+        frames[index] = pool.apply_async(pack_image, args=(dirPath, fileNames))
+    pool.close()
+    pool.join()
+    for index, frame in frames.items():
+        bin['frames'][index] = frame.get()
     save_bin(bin, os.path.join(path, "info.bin"))
     compress_file(os.path.join(path, "info.bin"))

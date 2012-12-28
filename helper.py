@@ -6,9 +6,12 @@ import struct
 import subprocess
 import zlib
 import re
+from multiprocessing import  cpu_count
 
 SRC_PATH = 'src'
 RES_PATH = 'res'
+#最大并发进程数
+MAX_PROCESS = cpu_count() * 2
 
 def find_leading_num(name):
     return re.findall(r'^\d+', name)
@@ -17,9 +20,11 @@ def find_leading_num(name):
 def compress_file(path):
     if os.path.exists(path):
         fileSize = os.path.getsize(path)
-        with open(path, 'rb') as originFile, open(path, 'wb') as comressedFile:
+        with open(path, 'rb') as originFile:
+            buffer = zlib.compress(originFile.read())
+        with open(path, 'wb') as comressedFile:
             comressedFile.write(struct.pack('I', fileSize))
-            comressedFile.write(zlib.compress(originFile.read()))
+            comressedFile.write(buffer)
 
 
 def identify_image(filename):
