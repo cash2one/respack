@@ -100,13 +100,13 @@ def save_bin(binData, path):
                     f.write(struct.pack(BlockInfo.struct_format, *blockInfos[j]))
 
 
-def pack_image(dirPath, fileNames):
+def pack_frame(dirPath, fileNames):
     images = []
     imageOffset = 0
     buffer = ''
     for fileName in fileNames:
         fileExt = os.path.splitext(fileName)[1]
-        if fileExt not in ['.tga', '.png']:
+        if fileExt != '.png':
             continue
         image = {}
         imagePath = os.path.join(dirPath, fileName)
@@ -137,9 +137,11 @@ def pack_image(dirPath, fileNames):
         texFile = imagePath.replace(fileExt, '.tex')
         with open(texFile, 'rb') as f:
             buffer += f.read()
-        os.remove(texFile)
-        imageOffset += len(buffer)
-    with open(os.path.join(dirPath, '00001.tex'), 'wb') as f:
+        texSize = os.path.getsize(texFile)
+        imageOffset += texSize
+        if imageOffset > texSize:
+            os.remove(texFile) #只保留第一帧
+    with open(os.path.join(dirPath, '000001.tex'), 'wb') as f:
         f.write(buffer)
     return images
 
@@ -151,7 +153,7 @@ def pack_res(path):
         if len(dirPath.split(os.sep)) != 3:
             continue
         index = int(dirPath.split(os.sep)[-1])
-        frames[index] = pool.apply_async(pack_image, args=(dirPath, fileNames))
+        frames[index] = pool.apply_async(pack_frame, args=(dirPath, fileNames))
     pool.close()
     pool.join()
     for index, frame in frames.items():

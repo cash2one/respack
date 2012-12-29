@@ -25,7 +25,7 @@ NmpFileHeader.struct_format = '4I16s'
 def generate_map(sceneName, path):
     if sceneName in IGNORED_MAPS:
         return
-    tileFile = os.path.join(RES_PATH, 'tile-{0}'.format(multi_get_letter(sceneName)), '00001.png')
+    tileFile = os.path.join(RES_PATH, 'tile-{0}'.format(multi_get_letter(sceneName)), '01.png')
     if not os.path.exists(tileFile):
         return
     packIndex = find_leading_num(sceneName)
@@ -38,7 +38,7 @@ def generate_map(sceneName, path):
     for y in range(mapHeader.height):
         for x in range(mapHeader.width):
             if (y % 4 == 0) and (x % 2 == 0):
-                imageIndex = '{0:05d}{1:02d}{2:02d}'.format(1, y / 4, x / 2)
+                imageIndex = '{0:02d}{1:02d}{2:02d}'.format(1, y / 4, x / 2)
                 tileData[(x, y)] = int(imageIndex)
 
     for file in glob.glob(os.path.join(RES_PATH, 'obj-{0}'.format(multi_get_letter(sceneName)), '*.png')):
@@ -48,7 +48,7 @@ def generate_map(sceneName, path):
         w, h, raw_width, raw_height, offset_x, offset_y = identify_image(file)
         for i in range(int(math.ceil(w / 64.0))):
             x, y = offset_x / 64 + i, (h + offset_y) / 32 - 1
-            imageIndex = '{0}{1:02d}{2:02d}'.format(file.split(os.sep)[-1][:-11], 0, i)
+            imageIndex = '{0}{1:02d}'.format(file.split(os.sep)[-1][:-11], i)
             objectData[(x, y)] = (int(imageIndex), h)
         os.remove(file)
 
@@ -72,9 +72,11 @@ def generate_map(sceneName, path):
 
 
 def generate_timap(sceneName, mapId):
-    destPath = os.path.join(RES_PATH, 'timap', '{0:09d}'.format(mapId))
+    destPath = os.path.join(RES_PATH, 'timap', '{0:06d}'.format(mapId))
     force_directory(destPath)
-    tileFile = os.path.join(RES_PATH, 'tile-{0}'.format(multi_get_letter(sceneName)), '00001.png')
+    tileFile = os.path.join(RES_PATH, 'tile-{0}'.format(multi_get_letter(sceneName)), '01.png')
+    if not os.path.exists(tileFile):
+        return
     width, height = get_size(tileFile)
     ratio = width / 640
     resize_param = 'x320' if height / ratio < 320 else '640'
@@ -91,13 +93,13 @@ def process_tile(path):
     destPath = os.path.join(RES_PATH, 'tile-{0}'.format(multi_get_letter(sceneName)))
     force_directory(destPath)
     for index, tileFile in enumerate(glob.glob(os.path.join(path, '*.png'))):
-        destFile = os.path.join(destPath, '{0:05d}.png'.format(index + 1))
+        destFile = os.path.join(destPath, '{0:02d}.png'.format(index + 1))
         shutil.copyfile(tileFile, destFile)
         os.system("convert {0} -crop 0x128 +repage {1}%02d.png".format(destFile, os.path.splitext(destFile)[0]))
-        for file in glob.glob(os.path.join(destPath, "{0:05d}??.png".format(index + 1))):
+        for file in glob.glob(os.path.join(destPath, "{0:02d}??.png".format(index + 1))):
             os.system("convert {0} -crop 128x0 +repage  {1}%02d-000001.png".format(file, os.path.splitext(file)[0]))
             os.remove(file)
-        put_images_into_folder(os.path.join(destPath, "{0:05d}????-*.png".format(index + 1)))
+        put_images_into_folder(os.path.join(destPath, "{0:02d}????-*.png".format(index + 1)))
 
 
 def trim_object(path):
@@ -123,14 +125,14 @@ def process_object(path):
     for dir in filter(lambda dir: os.path.isdir(os.path.join(path, dir)), os.listdir(path)):
         dirIndex = find_leading_num(dir)
         for frameIndex, frameFile in enumerate(glob.glob(os.path.join(path, dir, '*.png'))):
-            destFile = os.path.join(destPath, '{0:05d}-{1:06d}.png'.format(dirIndex, frameIndex + 1))
+            destFile = os.path.join(destPath, '{0:04d}-{1:06d}.png'.format(dirIndex, frameIndex + 1))
             shutil.copyfile(frameFile, destFile)
             trim_object(destFile)
-            os.system("convert {0} +repage -crop 64x0 +repage {1}%04d-{2:06d}.png".format(destFile,
-                os.path.splitext(destFile)[0][:-7], frameIndex + 1))
-            for file in glob.glob(os.path.join(destPath, "{0:05d}00*.png".format(dirIndex))):
+            os.system("convert {0} +repage -crop 64x0 +repage {1}%02d-{2:06d}.png".format(destFile,
+                destFile[:-11], frameIndex + 1))
+            for file in glob.glob(os.path.join(destPath, "{0:04d}??-*.png".format(dirIndex))):
                 trim_image(file)
-        put_images_into_folder(os.path.join(destPath, "{0:05d}00*.png".format(dirIndex)))
+        put_images_into_folder(os.path.join(destPath, "{0:04d}??-*.png".format(dirIndex)))
 
 
 def process_map(path):
@@ -165,30 +167,23 @@ def process_action(dirPath, fileNames, name, action, packName):
         return None
     actionIndex = actionTuple.index(action)
     actionInfo = ActionInfo(imagePackName=packName, actionIndex=actionIndex, directs=OrderedDict())
-
-    for fileName in fileNames:
-        if fileName[-4:] not in ['.png', '.tga']:
+    for index, fileName in enumerate(fileNames):
+        if not fileName.endswith('.png'):
             continue
-        directIndex = int(fileName[0])
-        frameIndex = fileName[-6:-4]
+        directIndex = int(fileName[:2])
         leading_num = find_leading_num(name)
-        imageIndex = '{0:03d}{1:02d}{2:02d}{3}'.format(leading_num, actionIndex, directIndex, frameIndex)
+        imageIndex = '{0:03d}{1:03d}'.format(leading_num, actionIndex)
         if directIndex not in actionInfo.directs:
             actionInfo.directs[directIndex] = DirectionInfo(images=[])
         directInfo = actionInfo.directs[directIndex]
         if imageIndex not in directInfo.images:
-            directInfo.images.append(imageIndex)
+            directInfo.images.append((imageIndex, index))
         destPath = os.path.join(RES_PATH, packName, imageIndex)
-        os.makedirs(destPath)
-        destFile = os.path.join(destPath, '000001{0}'.format(fileName[-4:]))
+        if not os.path.exists(destPath):
+            os.makedirs(destPath)
+        destFile = os.path.join(destPath, fileName)
         shutil.copyfile(os.path.join(dirPath, fileName), destFile)
-        if destFile.endswith('.tga'):
-            pngFile = destFile.replace('.tga', '.png')
-            os.system('convert.exe {0} {1}'.format(destFile, pngFile))
-            trim_image(pngFile)
-            os.remove(destFile)
-        else:
-            trim_image(destFile)
+        trim_image(destFile)
     return actionInfo
 
 
@@ -223,7 +218,8 @@ def export_per_file(path, personInfos):
                 for directInfo in actionInfo.directs.values():
                     f.write(struct.pack('I', len(directInfo.images)))
                     for imageIndex in directInfo.images:
-                        f.write(struct.pack('I', int(imageIndex)))
+                        f.write(struct.pack('I', int(imageIndex[0])))
+                        f.write(struct.pack('H', int(imageIndex[1])))
 
 
 def useage():
