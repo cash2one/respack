@@ -6,16 +6,17 @@ PF_DXT5		= 894720068,
 
 用到的数据结构(C++语言)：
 struct IMAGE_INFO
-{
-	WORD	width;		//原始宽度(无符号)
-	WORD	height;		//原始高度(无符号)
-	WORD	dataWidth;	//切后的宽度(无符号)
-	WORD	dataHeight;	//切后的高度(无符号)
-	WORD	offsetX;	//X偏移(有符号)
-	WORD	offsetY;	//Y偏移(有符号)
-	WORD	blockX;		//水平块数(无符号)
-	WORD	blockY;		//垂直块数 (无符号)
-};
+	{
+		DWORD	imgoffset;	//文件的数据偏移
+		WORD	width;		//原始宽度
+		WORD	height;		//原始高度
+		WORD	dataWidth;	//补正宽度
+		WORD	dataHeight;	//补正高度
+		SHORT	offsetX;	//水平中心
+		SHORT	offsetY;	//垂直中心
+		WORD	blockX;		//水平块数
+		WORD	blockY;		//垂直块数
+	};
 
 struct BLOCK_INFO
 {
