@@ -7,6 +7,8 @@ import math
 import winsound
 import multiprocessing as mp
 from collections import namedtuple, OrderedDict
+import time
+import datetime
 from packer import pack_res
 from helper import *
 
@@ -252,5 +254,7 @@ def main():
         useage()
 
 if __name__ == '__main__':
+    startTime = time.time()
     main()
+    print '×Ü¹²ºÄÊ±£º{0}'.format(str(datetime.timedelta(seconds=time.time() - startTime)))
     winsound.PlaySound('complete.wav', winsound.SND_FILENAME)

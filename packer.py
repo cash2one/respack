@@ -139,8 +139,8 @@ def pack_frame(dirPath, fileNames):
             buffer += f.read()
         texSize = os.path.getsize(texFile)
         imageOffset += texSize
-        if imageOffset > texSize:
-            os.remove(texFile) #只保留第一帧
+        if os.path.splitext(fileName)[0] != '000001':
+            os.remove(texFile)
     with open(os.path.join(dirPath, '000001.tex'), 'wb') as f:
         f.write(buffer)
     return images
