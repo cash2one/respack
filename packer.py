@@ -11,6 +11,7 @@ from helper import *
 
 ImageInfo = namedtuple('ImageInfo',
     """
+    imgOffset
     width
     height
     dataWidth
@@ -20,7 +21,7 @@ ImageInfo = namedtuple('ImageInfo',
     blockX
     blockY
     """)
-ImageInfo.struct_format = '8H'
+ImageInfo.struct_format = 'I8H'
 
 BlockInfo = namedtuple('BlockInfo',
     """
@@ -101,6 +102,8 @@ def save_bin(binData, path):
 
 def pack_image(dirPath, fileNames):
     images = []
+    imageOffset = 0
+    buffer = ''
     for fileName in fileNames:
         fileExt = os.path.splitext(fileName)[1]
         if fileExt not in ['.tga', '.png']:
@@ -108,18 +111,9 @@ def pack_image(dirPath, fileNames):
         image = {}
         imagePath = os.path.join(dirPath, fileName)
         w, h = get_size(imagePath)
-        raw_width, raw_height, offset_x, offset_y = get_rawsize_offset(imagePath)
-        if offset_x < 0 or offset_y < 0:
+        raw_width, raw_height, offsetX, offsetY = get_rawsize_offset(imagePath)
+        if offsetX < 0 or offsetY < 0:
             continue
-        imageInfo = ImageInfo(
-            width=raw_width if raw_width else w + offset_x,
-            height=raw_height if raw_height else h + offset_y,
-            dataWidth=w,
-            dataHeight=h,
-            offsetX=offset_x,
-            offsetY=offset_y,
-            blockX=int(math.ceil(w / 256.0)) if w > 256 else 1,
-            blockY=int(math.ceil(h / 256.0)) if h > 256 else 1)
         if w > 256 or h > 256:
             crop_image(imagePath)
             to_dds(os.path.join(dirPath, os.path.basename(imagePath)[:-4], '*{}'.format(fileExt)))
@@ -128,8 +122,25 @@ def pack_image(dirPath, fileNames):
             to_dds(imagePath)
             image['blocks'] = dds_to_tex(imagePath.replace(fileExt, '.dds'))
         os.remove(imagePath)
+        imageInfo = ImageInfo(
+            imgOffset=imageOffset,
+            width=raw_width if raw_width else w + offsetX,
+            height=raw_height if raw_height else h + offsetY,
+            dataWidth=w,
+            dataHeight=h,
+            offsetX=offsetX,
+            offsetY=offsetY,
+            blockX=int(math.ceil(w / 256.0)) if w > 256 else 1,
+            blockY=int(math.ceil(h / 256.0)) if h > 256 else 1)
         image['image'] = imageInfo
         images.append(image)
+        texFile = imagePath.replace(fileExt, '.tex')
+        with open(texFile, 'rb') as f:
+            buffer += f.read()
+        os.remove(texFile)
+        imageOffset += len(buffer)
+    with open(os.path.join(dirPath, '00001.tex'), 'wb') as f:
+        f.write(buffer)
     return images
 
 def pack_res(path):

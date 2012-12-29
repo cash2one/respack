@@ -14,7 +14,9 @@ RES_PATH = 'res'
 MAX_PROCESS = cpu_count() * 2
 
 def find_leading_num(name):
-    return re.findall(r'^\d+', name)
+    result = re.findall(r'^\d+', name)
+    assert len(result) == 1, '目录名不规范，必须以纯数字开头'
+    return int(result[0])
 
 
 def compress_file(path):

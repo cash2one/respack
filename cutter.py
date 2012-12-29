@@ -29,7 +29,6 @@ def generate_map(sceneName, path):
     if not os.path.exists(tileFile):
         return
     packIndex = find_leading_num(sceneName)
-    assert len(packIndex) == 1, '地图目录名不规范，必须以纯数字开头'
     tileData = {}
     objectData = {}
     imageWidth, imageHeight = identify_image(tileFile)[:2]
@@ -65,11 +64,25 @@ def generate_map(sceneName, path):
                 f.write(struct.pack('b', flag))
                 if (x, y) in tileData:
                     f.write(struct.pack('I', tileData[(x, y)] - 1))
-                    f.write(struct.pack('I', int(packIndex[0]) - 1))
+                    f.write(struct.pack('I', packIndex - 1))
                 if (x, y) in objectData:
                     f.write(struct.pack('I', objectData[(x, y)][0] - 1))
-                    f.write(struct.pack('I', int(packIndex[0]) - 1))
+                    f.write(struct.pack('I', packIndex - 1))
                     f.write(struct.pack('I', objectData[(x, y)][1]))
+
+
+def generate_timap(sceneName, mapId):
+    destPath = os.path.join(RES_PATH, 'timap', '{0:09d}'.format(mapId))
+    force_directory(destPath)
+    tileFile = os.path.join(RES_PATH, 'tile-{0}'.format(multi_get_letter(sceneName)), '00001.png')
+    width, height = get_size(tileFile)
+    ratio = width / 640
+    resize_param = 'x320' if height / ratio < 320 else '640'
+    os.system('convert.exe {0} -resize {1} {2}'.format(tileFile, resize_param, os.path.join(destPath, '000001.png')))
+
+
+def generate_mmap(sceneName, mapId):
+    pass
 
 
 def process_tile(path):
@@ -109,22 +122,24 @@ def process_object(path):
     force_directory(destPath)
     for dir in filter(lambda dir: os.path.isdir(os.path.join(path, dir)), os.listdir(path)):
         dirIndex = find_leading_num(dir)
-        assert len(dirIndex) == 1, '物件目录名不规范，必须以纯数字开头'
         for frameIndex, frameFile in enumerate(glob.glob(os.path.join(path, dir, '*.png'))):
-            destFile = os.path.join(destPath, '{0:05d}-{1:06d}.png'.format(int(dirIndex[0]), frameIndex + 1))
+            destFile = os.path.join(destPath, '{0:05d}-{1:06d}.png'.format(dirIndex, frameIndex + 1))
             shutil.copyfile(frameFile, destFile)
             trim_object(destFile)
             os.system("convert {0} +repage -crop 64x0 +repage {1}%04d-{2:06d}.png".format(destFile,
                 os.path.splitext(destFile)[0][:-7], frameIndex + 1))
-            for file in glob.glob(os.path.join(destPath, "{0:05d}00*.png".format(int(dirIndex[0])))):
+            for file in glob.glob(os.path.join(destPath, "{0:05d}00*.png".format(dirIndex))):
                 trim_image(file)
-        put_images_into_folder(os.path.join(destPath, "{0:05d}00*.png".format(int(dirIndex[0]))))
+        put_images_into_folder(os.path.join(destPath, "{0:05d}00*.png".format(dirIndex)))
 
 
 def process_map(path):
     process_tile(os.path.join(path, '地表'))
     process_object(os.path.join(path, '物件'))
     sceneName = path.split(os.sep)[-1]
+    mapId = find_leading_num(sceneName)
+    generate_timap(sceneName, mapId)
+    generate_mmap(sceneName, mapId)
     mapPath = os.path.join(RES_PATH, 'map')
     if not os.path.exists(mapPath):
         os.makedirs(mapPath)
@@ -157,8 +172,7 @@ def process_action(dirPath, fileNames, name, action, packName):
         directIndex = int(fileName[0])
         frameIndex = fileName[-6:-4]
         leading_num = find_leading_num(name)
-        assert len(leading_num) == 1, '角色目录名不规范，必须以纯数字开头'
-        imageIndex = '{0:03d}{1:02d}{2:02d}{3}'.format(int(leading_num[0]), actionIndex, directIndex, frameIndex)
+        imageIndex = '{0:03d}{1:02d}{2:02d}{3}'.format(leading_num, actionIndex, directIndex, frameIndex)
         if directIndex not in actionInfo.directs:
             actionInfo.directs[directIndex] = DirectionInfo(images=[])
         directInfo = actionInfo.directs[directIndex]
@@ -230,7 +244,7 @@ def main():
     elif action in dirNames:
         personInfos = {}
         force_directory(os.path.join(RES_PATH, action))
-        for dir in ['战士', '法师', '道士', '通用']:
+        for dir in ['通用', '战士', '法师', '道士']:
             process_character(os.path.join(SRC_PATH, dirNames[action], dir), action, personInfos)
         if len(personInfos) != 0:
             datasPath = os.path.join(RES_PATH, 'datas')
