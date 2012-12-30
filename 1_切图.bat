@@ -1,6 +1,5 @@
 @echo off
 @if "%1" == "" goto noparams
-echo %1
 @cutter.py %1
 @goto end
 :noparams

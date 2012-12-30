@@ -229,7 +229,7 @@ def export_per_file(path, personInfos):
 
 
 def useage():
-    print "Usage: cutter.py [scene|human|magic|weapon|npc]"
+    print "Usage: cutter.py [场景|角色|魔法|武器|npc]"
 
 
 def main():
@@ -243,7 +243,7 @@ def main():
     resType = dirName.split(os.sep)[-1]
     prefixMap = {'角色': 'human', '魔法': 'magic', '武器': 'weapon', 'npc': 'npc'}
     if resType == '场景':
-        process_scene(os.path.join(SRC_PATH, '场景'))
+        process_scene(os.path.join(SRC_PATH, resType))
         for dir in filter(lambda dir: os.path.isdir(os.path.join(RES_PATH, dir)) and
                                       (dir.startswith('tile-') or dir.startswith('obj-')), os.listdir(RES_PATH)):
             pack_res(os.path.join(RES_PATH, dir))
