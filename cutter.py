@@ -1,4 +1,5 @@
 #coding=gbk
+import base64
 import os
 import glob
 import shutil
@@ -256,5 +257,5 @@ def main():
 if __name__ == '__main__':
     startTime = time.time()
     main()
-    print '总共耗时：{0}'.format(str(datetime.timedelta(seconds=time.time() - startTime)))
-    winsound.PlaySound('complete.wav', winsound.SND_FILENAME)
+    print '总共耗时：{0}'.format(datetime.timedelta(seconds=time.time() - startTime))
+    winsound.PlaySound(zlib.decompress(base64.b64decode(COMPLETE_SOUND_DATA)), winsound.SND_MEMORY)
