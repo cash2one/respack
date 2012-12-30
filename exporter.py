@@ -17,8 +17,8 @@ def export_res(resFile, exportDir):
                 f.write(struct.pack('I', info.CRC))
                 f.write(struct.pack('I', info.file_size))
                 f.write(struct.pack('?', 0))
-                print '导出{0}为{1}'.format(info.filename, info.CRC)
-                with open(os.path.join(exportDir, str(info.CRC)), 'wb') as exportedFile:
+                print '导出{0}为{1:x}'.format(info.filename, info.CRC)
+                with open(os.path.join(exportDir, '{0:x}'.format(info.CRC)), 'wb') as exportedFile:
                     exportedFile.write(zip.read(info))
     compress_file(os.path.join(exportDir, 'filelist.zdat'))
 

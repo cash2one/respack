@@ -5,4 +5,3 @@
 :noparams
 @exporter.py
 :end
-@pause
