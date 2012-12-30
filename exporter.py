@@ -14,7 +14,7 @@ def export_res(resFile, exportDir):
                 if info.CRC == 0:
                     continue
                 f.write(struct.pack('50s', info.filename))
-                f.write(struct.pack('50s', str(info.CRC)))
+                f.write(struct.pack('I', info.CRC))
                 f.write(struct.pack('I', info.file_size))
                 f.write(struct.pack('?', 0))
                 print 'µ¼³ö{0}Îª{1}'.format(info.filename, info.CRC)
