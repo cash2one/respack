@@ -1,2 +1,0 @@
-@cutter.py human
-@pause

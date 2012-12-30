@@ -8,7 +8,7 @@ import zlib
 import re
 from multiprocessing import  cpu_count
 
-SRC_PATH = 'src'
+SRC_PATH = '.'
 RES_PATH = 'res'
 #最大并发进程数
 MAX_PROCESS = cpu_count() * 2

@@ -235,30 +235,33 @@ def useage():
 def main():
     if len(sys.argv) != 2:
         useage()
-        exit(0)
-    action = sys.argv[1]
-    dirNames = {'human': '角色', 'magic': '魔法', 'weapon': '武器', 'npc': 'npc'}
-    if action == 'scene':
+        exit(-1)
+    dirName = sys.argv[1]
+    if not os.path.isdir(dirName):
+        exit(-1)
+    startTime = time.time()
+    resType = dirName.split(os.sep)[-1]
+    prefixMap = {'角色': 'human', '魔法': 'magic', '武器': 'weapon', 'npc': 'npc'}
+    if resType == '场景':
         process_scene(os.path.join(SRC_PATH, '场景'))
         for dir in filter(lambda dir: os.path.isdir(os.path.join(RES_PATH, dir)) and
                                       (dir.startswith('tile-') or dir.startswith('obj-')), os.listdir(RES_PATH)):
             pack_res(os.path.join(RES_PATH, dir))
-    elif action in dirNames:
+    elif resType in prefixMap:
         personInfos = {}
-        force_directory(os.path.join(RES_PATH, action))
+        force_directory(os.path.join(RES_PATH, prefixMap[resType]))
         for dir in ['通用', '战士', '法师', '道士']:
-            process_character(os.path.join(SRC_PATH, dirNames[action], dir), action, personInfos)
+            process_character(os.path.join(SRC_PATH, resType, dir), prefixMap[resType], personInfos)
         if len(personInfos) != 0:
             datasPath = os.path.join(RES_PATH, 'datas')
             if not os.path.exists(datasPath):
                 os.makedirs(datasPath)
-            export_per_file(os.path.join(datasPath, '{0}.per'.format(action)), personInfos)
-            pack_res(os.path.join(RES_PATH, action))
+            export_per_file(os.path.join(datasPath, '{0}.per'.format(prefixMap[resType])), personInfos)
+            pack_res(os.path.join(RES_PATH, prefixMap[resType]))
     else:
         useage()
-
-if __name__ == '__main__':
-    startTime = time.time()
-    main()
     print '总共耗时：{0}'.format(datetime.timedelta(seconds=time.time() - startTime))
     winsound.PlaySound(zlib.decompress(base64.b64decode(COMPLETE_SOUND_DATA)), winsound.SND_MEMORY)
+
+if __name__ == '__main__':
+    main()
