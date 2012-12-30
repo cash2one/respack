@@ -1,4 +1,6 @@
 #coding=gbk
+import zipfile
+
 __author__ = 'harmy'
 import os
 import zlib
@@ -140,8 +142,9 @@ def pack_frame(dirPath, fileNames):
         f.write(buffer)
     return images
 
+
 def pack_res(path):
-    bin ={'imageFormat': PF_DXT3, 'frames': OrderedDict()}
+    bin = {'imageFormat': PF_DXT3, 'frames': OrderedDict()}
     pool = mp.Pool(processes=MAX_PROCESS)
     frames = {}
     for (dirPath, dirNames, fileNames) in os.walk(path):
@@ -157,3 +160,17 @@ def pack_res(path):
         bin['frames'][index] = frame.get()
     save_bin(bin, os.path.join(path, "info.bin"))
     compress_file(os.path.join(path, "info.bin"))
+
+
+def pack_into_zip(path, exts=['.tex', '.bin', '.per', '.map']):
+    with zipfile.ZipFile(path, 'w') as reszip:
+        for base, dirs, files in os.walk(RES_PATH):
+            for file in files:
+                if file[-4:] in exts:
+                    reszip.write(os.path.join(base, file))
+
+packFolders = ['timap', 'mmap']
+if __name__ == '__main__':
+    for dir in filter(lambda dir: os.path.isdir(os.path.join(RES_PATH, dir)) and dir in packFolders, os.listdir(RES_PATH)):
+        pack_res(os.path.join(RES_PATH, dir))
+    pack_into_zip('res.zip')

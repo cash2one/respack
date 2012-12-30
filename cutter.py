@@ -237,7 +237,7 @@ def main():
         useage()
         exit(0)
     action = sys.argv[1]
-    dirNames = { 'human': '角色', 'magic': '魔法', 'weapon': '武器', 'npc': 'npc'}
+    dirNames = {'human': '角色', 'magic': '魔法', 'weapon': '武器', 'npc': 'npc'}
     if action == 'scene':
         process_scene(os.path.join(SRC_PATH, '场景'))
         for dir in filter(lambda dir: os.path.isdir(os.path.join(RES_PATH, dir)) and

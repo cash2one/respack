@@ -34,8 +34,10 @@ def identify_image(filename):
     output = subprocess.check_output('identify.exe -format %w,%h,%g {0}'.format(filename))
     return [int(item) for item in re.search(r'(\d+),(\d+),(\d+)x(\d+)([\+\-]\d+)([\+\-]\d+)', output).groups()]
 
+
 def get_parent_dir(path):
     return os.path.abspath(os.path.join(path, os.path.pardir))
+
 
 def get_size(filename):
     return identify_image(filename)[:2]
