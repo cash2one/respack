@@ -170,9 +170,8 @@ def process_action(dirPath, fileNames, name, action, packName):
         return None
     actionIndex = actionTuple.index(action)
     actionInfo = ActionInfo(imagePackName=packName, actionIndex=actionIndex, directs=OrderedDict())
+    fileNames = [fileName for fileName in fileNames if fileName[-4:] in ['.tga', '.png']]
     for index, fileName in enumerate(fileNames):
-        if not fileName.endswith('.png'):
-            continue
         directIndex = int(fileName[:2])
         leading_num = find_leading_num(name)
         imageIndex = '{0:03d}{1:03d}'.format(leading_num, actionIndex)
@@ -186,6 +185,10 @@ def process_action(dirPath, fileNames, name, action, packName):
             os.makedirs(destPath)
         destFile = os.path.join(destPath, fileName)
         shutil.copyfile(os.path.join(dirPath, fileName), destFile)
+        if destFile.endswith('.tga'):
+            pngFile = destFile.replace('.tga', '.png')
+            os.system('convert {0} {1}'.format(destFile, pngFile))
+            destFile = pngFile
         trim_image(destFile)
     return actionInfo
 

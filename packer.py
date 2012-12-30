@@ -57,7 +57,6 @@ def dds_to_tex(path):
         blockInfos.append(blockInfo)
         with open(path.replace('.dds', '.tex'), 'wb') as texfd:
             texfd.write(buffer)
-        os.remove(path)
         return blockInfos
 
 
@@ -76,10 +75,9 @@ def folder_to_tex(path):
                     len=len(blockData))
                 buffer += blockData
             blockInfos.append(blockInfo)
-        texfile = "{0}\\{1}.tex".format(os.path.abspath(os.path.join(path, os.path.pardir)), os.path.basename(path))
+        texfile = "{0}\\{1}.tex".format(get_parent_dir(path), os.path.basename(path))
         with open(texfile, 'wb') as texfd:
             texfd.write(buffer)
-        shutil.rmtree(path)
         return blockInfos
 
 
@@ -121,7 +119,6 @@ def pack_frame(dirPath, fileNames):
         else:
             to_dds(imagePath)
             image['blocks'] = dds_to_tex(imagePath.replace(fileExt, '.dds'))
-        os.remove(imagePath)
         imageInfo = ImageInfo(
             imgOffset=imageOffset,
             width=raw_width if raw_width else w + offsetX,
@@ -137,11 +134,9 @@ def pack_frame(dirPath, fileNames):
         texFile = imagePath.replace(fileExt, '.tex')
         with open(texFile, 'rb') as f:
             buffer += f.read()
-        texSize = os.path.getsize(texFile)
-        imageOffset += texSize
-        if os.path.splitext(fileName)[0] != '000001':
-            os.remove(texFile)
-    with open(os.path.join(dirPath, '000001.tex'), 'wb') as f:
+        imageOffset += os.path.getsize(texFile)
+    packedFile = "{0}\\{1}.tex".format(get_parent_dir(dirPath), dirPath.split(os.sep)[-1])
+    with open(packedFile, 'wb') as f:
         f.write(buffer)
     return images
 
@@ -156,6 +151,8 @@ def pack_res(path):
         frames[index] = pool.apply_async(pack_frame, args=(dirPath, fileNames))
     pool.close()
     pool.join()
+    for dir in filter(lambda dir: os.path.isdir(os.path.join(path, dir)), os.listdir(path)):
+        shutil.rmtree(os.path.join(path, dir))
     for index, frame in frames.items():
         bin['frames'][index] = frame.get()
     save_bin(bin, os.path.join(path, "info.bin"))
