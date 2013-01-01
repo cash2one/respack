@@ -5,6 +5,8 @@ import zipfile as zf
 from helper import *
 
 def export_res(resFile, exportDir):
+    if not os.path.exists(resFile):
+        return
     force_directory(exportDir)
     with zf.ZipFile(resFile, 'r') as zipFile:
         with open(os.path.join(exportDir, 'filelist.zdat'), 'wb') as filelist:
@@ -16,8 +18,10 @@ def export_res(resFile, exportDir):
                 filelist.write(struct.pack('I', info.file_size))
                 filelist.write(struct.pack('?', 0))
                 print 'µ¼³ö{0}Îª{1:x}'.format(info.filename, info.CRC)
-                with open(os.path.join(exportDir, '{0:x}'.format(info.CRC)), 'wb') as exportedFile:
-                    exportedFile.write(zipFile.read(info))
+                exportedFileName = os.path.join(exportDir, '{0:x}'.format(info.CRC))
+                if not os.path.exists(exportedFileName):
+                    with open(exportedFileName, 'wb') as exportedFile:
+                        exportedFile.write(zipFile.read(info))
     compress_file(os.path.join(exportDir, 'filelist.zdat'))
 
 if __name__ == '__main__':
