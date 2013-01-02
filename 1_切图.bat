@@ -6,7 +6,7 @@ cd /d %~dp0
 @cutter.py %1
 goto end
 :noparams
-set SRCPATH=.
+set SRCPATH=\\192.168.0.2\share\傲视苍穹美术资源
 set /p SRCPATH=请输入源图所在目录(默认:%SRCPATH%)
 @echo 请选择切图类型：
 @echo 1.npc
