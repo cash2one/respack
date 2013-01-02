@@ -4,12 +4,12 @@ import sys
 import zipfile as zf
 from helper import *
 
-def export_res(resFile, exportDir):
-    if not os.path.exists(resFile):
+def export_res(filename, dest):
+    if not os.path.exists(filename):
         return
-    force_directory(exportDir)
-    with zf.ZipFile(resFile, 'r') as zipFile:
-        with open(os.path.join(exportDir, 'filelist.zdat'), 'wb') as filelist:
+    force_directory(dest)
+    with zf.ZipFile(filename, 'r') as zipFile:
+        with open(os.path.join(dest, 'filelist.zdat'), 'wb') as filelist:
             infolist = [info for info in zipFile.infolist() if info.CRC != 0]
             filelist.write(struct.pack('I', len(infolist)))
             for info in infolist:
@@ -18,12 +18,12 @@ def export_res(resFile, exportDir):
                 filelist.write(struct.pack('I', info.file_size))
                 filelist.write(struct.pack('?', 0))
                 print 'µ¼³ö{0}Îª{1:x}'.format(info.filename, info.CRC)
-                exportedFileName = os.path.join(exportDir, '{0:x}'.format(info.CRC))
+                exportedFileName = os.path.join(dest, '{0:x}'.format(info.CRC))
                 if not os.path.exists(exportedFileName):
                     with open(exportedFileName, 'wb') as exportedFile:
                         exportedFile.write(zipFile.read(info))
-    compress_file(os.path.join(exportDir, 'filelist.zdat'))
+    compress_file(os.path.join(dest, 'filelist.zdat'))
 
 if __name__ == '__main__':
-    resFile = sys.argv[1] if len(sys.argv) == 2 else 'res.zip'
-    export_res(resFile, 'update')
+    resFileName = sys.argv[1] if len(sys.argv) == 2 else 'res.zip'
+    export_res(resFileName, 'update')

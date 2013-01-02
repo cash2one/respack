@@ -21,7 +21,8 @@ WOOOL_FLAG_UNKNOW = 16
 
 #特定的地图包不生成地图文件
 IGNORED_MAPS = []
-
+#角色图包类型
+CHAR_TYPES = {'角色': 'human', '魔法': 'magic', '武器': 'weapon', 'npc': 'npc'}
 NmpFileHeader = namedtuple('NmpFileHeader', 'size version width height unknown')
 NmpFileHeader.struct_format = '4I16s'
 
@@ -193,14 +194,14 @@ def process_action(dirPath, fileNames, name, action, packName):
     return actionInfo
 
 
-def process_character(path, packName, personInfos):
+def process_character(path, resType, personInfos):
     pool = mp.Pool(processes=MAX_PROCESS)
     deferedResult = {}
     for  (dirPath, dirNames, fileNames) in os.walk(path):
-        if len(dirPath.split(os.sep)) != 5:
+        if len(os.path.relpath(dirPath, path).split(os.sep)) !=2:
             continue
         name, action = dirPath.split(os.sep)[-2:]
-        deferedResult[(name, action)] = pool.apply_async(process_action, (dirPath, fileNames, name, action, packName))
+        deferedResult[(name, action)] = pool.apply_async(process_action, (dirPath, fileNames, name, action, CHAR_TYPES[resType]))
     pool.close()
     pool.join()
     for (name, action), defered in deferedResult.items():
@@ -236,28 +237,26 @@ def main():
     if len(sys.argv) != 2:
         useage()
         exit(-1)
-    dirName = sys.argv[1]
-    if not os.path.isdir(dirName):
+    if not os.path.isdir(sys.argv[1]):
         exit(-1)
     startTime = time.time()
-    resType = dirName.split(os.sep)[-1]
-    prefixMap = {'角色': 'human', '魔法': 'magic', '武器': 'weapon', 'npc': 'npc'}
+    SRC_PATH, resType = sys.argv[1].rsplit(os.sep, 1)
     if resType == '场景':
         process_scene(os.path.join(SRC_PATH, resType))
         for dir in filter(lambda dir: os.path.isdir(os.path.join(RES_PATH, dir)) and
                                       (dir.startswith('tile-') or dir.startswith('obj-')), os.listdir(RES_PATH)):
             pack_res(os.path.join(RES_PATH, dir))
-    elif resType in prefixMap:
+    elif resType in CHAR_TYPES:
         personInfos = {}
-        force_directory(os.path.join(RES_PATH, prefixMap[resType]))
+        force_directory(os.path.join(RES_PATH, CHAR_TYPES[resType]))
         for dir in ['通用', '战士', '法师', '道士']:
-            process_character(os.path.join(SRC_PATH, resType, dir), prefixMap[resType], personInfos)
+            process_character(os.path.join(SRC_PATH, resType, dir), resType, personInfos)
         if len(personInfos) != 0:
             datasPath = os.path.join(RES_PATH, 'datas')
             if not os.path.exists(datasPath):
                 os.makedirs(datasPath)
-            export_per_file(os.path.join(datasPath, '{0}.per'.format(prefixMap[resType])), personInfos)
-            pack_res(os.path.join(RES_PATH, prefixMap[resType]))
+            export_per_file(os.path.join(datasPath, '{0}.per'.format(CHAR_TYPES[resType])), personInfos)
+            pack_res(os.path.join(RES_PATH, CHAR_TYPES[resType]))
     else:
         useage()
     print '总共耗时：{0}'.format(datetime.timedelta(seconds=time.time() - startTime))
