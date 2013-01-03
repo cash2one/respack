@@ -11,7 +11,7 @@ MUST_PRESENT_FILES = ['[!res]*.dll',
                       'res/datas/*',
                       'res/map/*.map',
                       'res/tile-01xsc/*',
-                      'res/*.sql',
+                      'res/*.sgl',
                       'res/*.dqi',
                       'res/*.fnt'
 ]

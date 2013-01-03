@@ -3,5 +3,7 @@
 @exporter.py %1
 @goto end
 :noparams
-@exporter.py
+set RESZIP=res.zip
+set /p RESZIP=请输入资源文件名(默认:%RESZIP%)
+@exporter.py %RESZIP%
 :end
