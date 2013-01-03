@@ -13,7 +13,7 @@ def export_res(filename, dest):
             infolist = [info for info in zipFile.infolist() if info.CRC != 0]
             filelist.write(struct.pack('I', len(infolist)))
             for info in infolist:
-                filelist.write(struct.pack('32s', info.filename))
+                filelist.write(struct.pack('64s', info.filename))
                 filelist.write(struct.pack('I', info.CRC))
                 filelist.write(struct.pack('I', info.file_size))
                 filelist.write(struct.pack('?', 0))
