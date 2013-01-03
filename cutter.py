@@ -171,7 +171,7 @@ def process_action(dirPath, fileNames, name, action, packName):
         return None
     actionIndex = actionTuple.index(action)
     actionInfo = ActionInfo(imagePackName=packName, actionIndex=actionIndex, directs=OrderedDict())
-    fileNames = [fileName for fileName in fileNames if fileName[-4:] in ['.tga', '.png']]
+    fileNames = sorted([fileName for fileName in fileNames if fileName[-4:] in ['.tga', '.png']])
     for index, fileName in enumerate(fileNames):
         directIndex = int(fileName[:2])
         leading_num = find_leading_num(name)
@@ -179,8 +179,7 @@ def process_action(dirPath, fileNames, name, action, packName):
         if directIndex not in actionInfo.directs:
             actionInfo.directs[directIndex] = DirectionInfo(images=[])
         directInfo = actionInfo.directs[directIndex]
-        if imageIndex not in directInfo.images:
-            directInfo.images.append((imageIndex, index))
+        directInfo.images.append((imageIndex, index))
         destPath = os.path.join(RES_PATH, packName, imageIndex)
         if not os.path.exists(destPath):
             os.makedirs(destPath)
