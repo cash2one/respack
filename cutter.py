@@ -149,7 +149,9 @@ def process_map(path):
     mapPath = os.path.join(RES_PATH, 'map')
     if not os.path.exists(mapPath):
         os.makedirs(mapPath)
-    generate_map(sceneName, os.path.join(mapPath, '__{0}.map'.format(multi_get_letter(sceneName))))
+    mapName = os.path.join(mapPath, '__{0}.map'.format(multi_get_letter(sceneName)))
+    generate_map(sceneName, mapName)
+    compress_file(mapName)
 
 
 def process_scene(path):
