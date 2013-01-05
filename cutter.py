@@ -187,6 +187,8 @@ def process_action(dirPath, fileNames, name, action, packName):
             os.makedirs(destPath)
         destFile = os.path.join(destPath, fileName)
         shutil.copyfile(os.path.join(dirPath, fileName), destFile)
+        if dirPath.split(os.sep)[-3] == '传世':
+            continue
         if destFile.endswith('.tga'):
             pngFile = destFile.replace('.tga', '.png')
             os.system('convert {0} {1}'.format(destFile, pngFile))
@@ -250,7 +252,7 @@ def main():
     elif resType in CHAR_TYPES:
         personInfos = {}
         force_directory(os.path.join(RES_PATH, CHAR_TYPES[resType]))
-        for dir in ['通用', '战士', '法师', '道士']:
+        for dir in ['通用', '战士', '法师', '道士', '传世']:
             process_character(os.path.join(SRC_PATH, resType, dir), resType, personInfos)
         if len(personInfos) != 0:
             datasPath = os.path.join(RES_PATH, 'datas')
