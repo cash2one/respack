@@ -106,7 +106,7 @@ def pack_frame(dirPath, fileNames):
     buffer = ''
     for fileName in fileNames:
         fileExt = os.path.splitext(fileName)[1]
-        if fileExt != '.png':
+        if fileExt not in ['.png', '.tga']:
             continue
         image = {}
         imagePath = os.path.join(dirPath, fileName)
@@ -158,8 +158,9 @@ def pack_res(path):
         shutil.rmtree(os.path.join(path, dir))
     for index, frame in frames.items():
         bin['frames'][index] = frame.get()
-    save_bin(bin, os.path.join(path, "info.bin"))
-    compress_file(os.path.join(path, "info.bin"))
+    if len(frames) > 0:
+        save_bin(bin, os.path.join(path, "info.bin"))
+        compress_file(os.path.join(path, "info.bin"))
 
 
 def pack_into_zip(path, exts=['.tex', '.bin', '.per', '.map']):
@@ -169,8 +170,7 @@ def pack_into_zip(path, exts=['.tex', '.bin', '.per', '.map']):
                 if file[-4:] in exts:
                     reszip.write(os.path.join(base, file))
 
-packFolders = ['timap', 'mmap']
 if __name__ == '__main__':
-    for dir in filter(lambda dir: os.path.isdir(os.path.join(RES_PATH, dir)) and dir in packFolders, os.listdir(RES_PATH)):
+    for dir in filter(lambda dir: os.path.isdir(os.path.join(RES_PATH, dir)), os.listdir(RES_PATH)):
         pack_res(os.path.join(RES_PATH, dir))
     pack_into_zip('res.zip')
