@@ -35,7 +35,7 @@ def generate_map(sceneName, path):
     packIndex = find_leading_num(sceneName)
     tileData = {}
     objectData = {}
-    imageWidth, imageHeight = identify_image(tileFile)[:2]
+    imageWidth, imageHeight = get_size(tileFile)
     os.remove(tileFile)
     mapHeader = NmpFileHeader(size=32, version=100, width=imageWidth / 64, height=imageHeight / 32, unknown='')
 
@@ -181,7 +181,7 @@ def process_action(dirPath, fileNames, name, action, packName):
         if directIndex not in actionInfo.directs:
             actionInfo.directs[directIndex] = DirectionInfo(images=[])
         directInfo = actionInfo.directs[directIndex]
-        directInfo.images.append((imageIndex, index))
+        directInfo.images.append((int(imageIndex), index))
         destPath = os.path.join(RES_PATH, packName, imageIndex)
         if not os.path.exists(destPath):
             os.makedirs(destPath)
@@ -228,8 +228,8 @@ def export_per_file(path, personInfos):
                 for directInfo in actionInfo.directs.values():
                     f.write(struct.pack('I', len(directInfo.images)))
                     for imageIndex in directInfo.images:
-                        f.write(struct.pack('I', int(imageIndex[0])))
-                        f.write(struct.pack('H', int(imageIndex[1])))
+                        f.write(struct.pack('I', imageIndex[0]))
+                        f.write(struct.pack('H', imageIndex[1]))
 
 
 def useage():
