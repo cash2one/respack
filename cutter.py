@@ -168,7 +168,7 @@ DirectionInfo = namedtuple('DirectionInfo', 'images')
 
 def process_action(dirPath, fileNames, name, action, packName):
     print '正在处理{0}...'.format(dirPath)
-    actionTuple = ('出生', '待机', '采集', '跑步', '跳斩', '走路', '物理攻击', '魔法攻击', '骑乘待机', '骑乘跑动')
+    actionTuple = ('出生', '待机', '采集', '跑步', '跳斩', '走路', '物理攻击', '魔法攻击', '骑乘待机', '骑乘跑动', '受击', '死亡')
     if action not in actionTuple:
         return None
     actionIndex = actionTuple.index(action)
@@ -192,6 +192,7 @@ def process_action(dirPath, fileNames, name, action, packName):
         if destFile.endswith('.tga'):
             pngFile = destFile.replace('.tga', '.png')
             os.system('convert {0} {1}'.format(destFile, pngFile))
+            os.remove(destFile)
             destFile = pngFile
         trim_image(destFile)
     return actionInfo
@@ -252,7 +253,7 @@ def main():
     elif resType in CHAR_TYPES:
         personInfos = {}
         force_directory(os.path.join(RES_PATH, CHAR_TYPES[resType]))
-        for dir in ['通用', '战士', '法师', '道士', '传世']:
+        for dir in ['通用', '战士', '法师', '道士', '传世', '怪物']:
             process_character(os.path.join(SRC_PATH, resType, dir), resType, personInfos)
         if len(personInfos) != 0:
             datasPath = os.path.join(RES_PATH, 'datas')
