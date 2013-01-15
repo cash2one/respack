@@ -168,7 +168,7 @@ DirectionInfo = namedtuple('DirectionInfo', 'images')
 
 def process_action(dirPath, fileNames, name, action, packName):
     print '正在处理{0}...'.format(dirPath)
-    actionTuple = ('出生', '待机', '采集', '跑步', '跳斩', '走路', '物理攻击', '魔法攻击', '骑乘待机', '骑乘跑动', '受击', '死亡')
+    actionTuple = ('出生', '待机', '@采集', '跑步', '跳斩', '走路', '物理攻击', '魔法攻击', '骑乘待机', '骑乘跑动', '受击', '死亡')
     if action not in actionTuple:
         return None
     actionIndex = actionTuple.index(action)

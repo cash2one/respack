@@ -49,7 +49,9 @@ def get_rawsize_offset(filename):
     if filename.endswith('.tga'):
         with open(filename, 'rb') as f:
             f.seek(3)
-            offset_x, offset_y, _, raw_width, raw_height = struct.unpack('2HB2H', f.read(struct.calcsize('2HB2H')))
+            offset_x, offset_y = struct.unpack('2H', f.read(struct.calcsize('2H')))
+            f.seek(8)
+            raw_width, raw_height = struct.unpack('2H', f.read(struct.calcsize('2H')))
     elif filename.endswith('.png'):
         _, _, raw_width, raw_height, offset_x, offset_y = identify_image(filename)
     else:
