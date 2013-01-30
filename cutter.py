@@ -232,7 +232,6 @@ def export_per_file(path, personInfos):
                         f.write(struct.pack('I', imageIndex[0]))
                         f.write(struct.pack('H', imageIndex[1]))
 
-
 def useage():
     print "Usage: cutter.py [场景|角色|魔法|武器|npc]"
 
@@ -256,10 +255,9 @@ def main():
         for dir in ['通用', '战士', '法师', '道士', '传世', '怪物']:
             process_character(os.path.join(SRC_PATH, resType, dir), resType, personInfos)
         if len(personInfos) != 0:
-            datasPath = os.path.join(RES_PATH, 'datas')
-            if not os.path.exists(datasPath):
-                os.makedirs(datasPath)
-            export_per_file(os.path.join(datasPath, '{0}.per'.format(CHAR_TYPES[resType])), personInfos)
+            perPath = os.path.join(RES_PATH, CHAR_TYPES[resType], '{0}.per'.format(CHAR_TYPES[resType]))
+            export_per_file(perPath, personInfos)
+            compress_file(perPath)
             pack_res(os.path.join(RES_PATH, CHAR_TYPES[resType]))
     else:
         useage()
