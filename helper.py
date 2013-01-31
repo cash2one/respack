@@ -24,11 +24,12 @@ def compress_file(path):
     if os.path.exists(path):
         fileSize = os.path.getsize(path)
         with open(path, 'rb') as originFile:
-            buffer = zlib.compress(originFile.read())
-        with open(path, 'wb') as compressedFile:
-            compressedFile.write(struct.pack('4s', 'ZLIB'))
-            compressedFile.write(struct.pack('I', fileSize))
-            compressedFile.write(buffer)
+            buffer = originFile.read()
+        if buffer[:4] != 'ZLIB':   
+            with open(path, 'wb') as compressedFile:
+                compressedFile.write(struct.pack('4s', 'ZLIB'))
+                compressedFile.write(struct.pack('I', fileSize))
+                compressedFile.write(zlib.compress(buffer))
 
 
 def identify_image(filename):
