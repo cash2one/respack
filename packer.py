@@ -170,7 +170,19 @@ def pack_into_zip(path, exts=['.tex', '.bin', '.per', '.map']):
                 if file[-4:] in exts:
                     reszip.write(os.path.join(base, file))
 
+packFolders = [
+'timap', 
+'mmap', 
+'dnitems', 
+'expression', 
+'interface',
+'interface2',
+'itemanimation',
+'items',
+'stateitem',
+]
+
 if __name__ == '__main__':
-    for dir in filter(lambda dir: os.path.isdir(os.path.join(RES_PATH, dir)), os.listdir(RES_PATH)):
+    for dir in filter(lambda dir: os.path.isdir(os.path.join(RES_PATH, dir)) and dir in packFolders, os.listdir(RES_PATH)):
         pack_res(os.path.join(RES_PATH, dir))
     pack_into_zip('res.zip')

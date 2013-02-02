@@ -20,89 +20,119 @@ WOOOL_FLAG_OBJECT = 8
 WOOOL_FLAG_UNKNOW = 16
 
 #特定的地图包不生成地图文件
-IGNORED_MAPS = []
+IGNORED_MAPS = ['99通用']
 #角色图包类型
 CHAR_TYPES = {'角色': 'human', '魔法': 'magic', '武器': 'weapon', 'npc': 'npc'}
 NmpFileHeader = namedtuple('NmpFileHeader', 'size version width height unknown')
+MapsHeader = namedtuple('MapsHeader', 'name width height version')
+MapsHeader.struct_format = '32s3I'
 NmpFileHeader.struct_format = '4I16s'
+mapData = {
+    "name": "",
+    "sceneName": "",
+    "width": 0,
+    "height": 0,
+    "tiles": {},
+    "objects": {},
+    "blocks": {}
+}
 
-def generate_map(sceneName, path):
+def generate_map():
+    sceneName = mapData["sceneName"]
     if sceneName in IGNORED_MAPS:
         return
-    tileFile = os.path.join(RES_PATH, 'tile-{0}'.format(multi_get_letter(sceneName)), '01.png')
-    if not os.path.exists(tileFile):
-        return
+    mapDir = os.path.join(RES_PATH, 'map')
+    if not os.path.exists(mapDir):
+        os.makedirs(mapDir)
+    mapPath = os.path.join(mapDir, '__{0}.map'.format(mapData["name"]))
     packIndex = find_leading_num(sceneName)
-    tileData = {}
-    objectData = {}
-    imageWidth, imageHeight = get_size(tileFile)
-    os.remove(tileFile)
-    mapHeader = NmpFileHeader(size=32, version=100, width=imageWidth / 64, height=imageHeight / 32, unknown='')
 
-    for y in range(mapHeader.height):
-        for x in range(mapHeader.width):
-            if (y % 4 == 0) and (x % 2 == 0):
-                imageIndex = '{0:02d}{1:02d}{2:02d}'.format(1, y / 4, x / 2)
-                tileData[(x, y)] = int(imageIndex)
+    #从maps文件中加载阻挡信息
+    mapsFile = os.path.join(mapDir, mapData["name"] + ".maps")
+    if os.path.exists(mapsFile):
+        with open(mapsFile, 'rb') as f:
+            mapsHeader = MapsHeader(*struct.unpack(MapsHeader.struct_format, f.read(struct.calcsize(MapsHeader.struct_format))))
+            if mapsHeader.width == mapData["width"] and mapsHeader.height == mapData["height"]:
+                for y in range(mapsHeader.height):
+                    for x in range(mapsHeader.width):
+                        flag = struct.unpack('H', f.read(struct.calcsize('H')))[0]
+                        if flag & WOOOL_FLAG_BLOCK:
+                            mapData["blocks"][(x, y)] = flag
 
-    for file in glob.glob(os.path.join(RES_PATH, 'obj-{0}'.format(multi_get_letter(sceneName)), '*.png')):
-        if not file.endswith('-000001.png'):
-            os.remove(file)
-            continue
-        w, h, raw_width, raw_height, offset_x, offset_y = identify_image(file)
-        for i in range(int(math.ceil(w / 64.0))):
-            x, y = offset_x / 64 + i, (h + offset_y) / 32 - 1
-            imageIndex = '{0}{1:02d}'.format(file.split(os.sep)[-1][:-11], i)
-            objectData[(x, y)] = (int(imageIndex), h)
-        os.remove(file)
-
-    with open(path, 'wb') as f:
+    mapHeader = NmpFileHeader(size=32, version=100, width=mapData["width"], height=mapData["height"], unknown='')
+    with open(mapPath, 'wb') as f:
         f.write(struct.pack(NmpFileHeader.struct_format, *mapHeader))
         for y in range(mapHeader.height):
             for x in range(mapHeader.width):
                 flag = 0
-                if (x, y) in tileData:
+                if (x, y) in mapData["blocks"]:
+                    flag |= WOOOL_FLAG_BLOCK
+                if (x, y) in mapData["tiles"]:
                     flag |= WOOOL_FLAG_TILE
-                if (x, y) in objectData:
+                if (x, y) in mapData["objects"]:
                     flag |= WOOOL_FLAG_OBJECT
                 f.write(struct.pack('b', flag))
-                if (x, y) in tileData:
-                    f.write(struct.pack('I', tileData[(x, y)] - 1))
+                if (x, y) in mapData["tiles"]:
+                    f.write(struct.pack('I', mapData["tiles"][(x, y)] - 1))
                     f.write(struct.pack('I', packIndex - 1))
-                if (x, y) in objectData:
-                    f.write(struct.pack('I', objectData[(x, y)][0] - 1))
+                if (x, y) in mapData["objects"]:
+                    f.write(struct.pack('I', mapData["objects"][(x, y)][0] - 1))
                     f.write(struct.pack('I', packIndex - 1))
-                    f.write(struct.pack('I', objectData[(x, y)][1]))
+                    f.write(struct.pack('I', mapData["objects"][(x, y)][1]))
+    compress_file(mapPath)
 
-
-def generate_timap(sceneName, mapId):
+def generate_timap():
+    mapId = find_leading_num(mapData["sceneName"])
     destPath = os.path.join(RES_PATH, 'timap', '{0:06d}'.format(mapId))
     force_directory(destPath)
-    tileFile = os.path.join(RES_PATH, 'tile-{0}'.format(multi_get_letter(sceneName)), '01.png')
+    tileFile = os.path.join(RES_PATH, 'tile-{0}'.format(mapData["name"]), '01.png')
     if not os.path.exists(tileFile):
         return
-    width, height = get_size(tileFile)
+    width, height = mapData["width"] * 64, mapData["height"] * 32
     ratio = width / 640
-    resize_param = 'x320' if height / ratio < 320 else '640'
+    resize_param = 'x320' if height / ratio > 320 else '640'
     os.system('convert.exe {0} -resize {1} {2}'.format(tileFile, resize_param, os.path.join(destPath, '000001.png')))
 
 
-def generate_mmap(sceneName, mapId):
-    pass
+def generate_mmap():
+    mapId = find_leading_num(mapData["sceneName"])
+    destPath = os.path.join(RES_PATH, 'mmap', '{0:06d}'.format(mapId))
+    force_directory(destPath)
+    tileFile = os.path.join(RES_PATH, 'tile-{0}'.format(mapData["name"]), '01.png')
+    if not os.path.exists(tileFile):
+        return
+    width, height = mapData["width"] * 64, mapData["height"] * 32
+    ratio = width / 800
+    resize_param = 'x600' if height / ratio > 600 else '800'
+    os.system('convert.exe {0} -resize {1} {2}'.format(tileFile, resize_param, os.path.join(destPath, '000001.png')))
 
 
 def process_tile(path):
+    global mapData
     sceneName = path.split(os.sep)[-2]
+    mapName = multi_get_letter(sceneName)
     print '正在处理{0}地表...'.format(sceneName)
-    destPath = os.path.join(RES_PATH, 'tile-{0}'.format(multi_get_letter(sceneName)))
+    mapData["name"] = mapName
+    mapData["sceneName"] = sceneName
+    destPath = os.path.join(RES_PATH, 'tile-{0}'.format(mapName))
     force_directory(destPath)
     for index, tileFile in enumerate(glob.glob(os.path.join(path, '*.png'))):
         destFile = os.path.join(destPath, '{0:02d}.png'.format(index + 1))
         shutil.copyfile(tileFile, destFile)
+        imageWidth, imageHeight = get_size(destFile)
+        mapData["width"] = imageWidth / 64
+        mapData["height"] = imageHeight / 32
+        generate_timap()
+        generate_mmap()
         os.system("convert {0} -crop 0x128 +repage {1}%02d.png".format(destFile, os.path.splitext(destFile)[0]))
+        os.remove(destFile)
         for file in glob.glob(os.path.join(destPath, "{0:02d}??.png".format(index + 1))):
             os.system("convert {0} -crop 128x0 +repage  {1}%02d-000001.png".format(file, os.path.splitext(file)[0]))
             os.remove(file)
+        for file in glob.glob(os.path.join(destPath, "{0:02d}????-000001.png".format(index + 1))):
+            imageIndex = os.path.basename(file)[:-11]
+            x, y = 2 * int(imageIndex[4:6]), 4 * int(imageIndex[2:4])
+            mapData["tiles"][(x, y)] = int(imageIndex)
         put_images_into_folder(os.path.join(destPath, "{0:02d}????-*.png".format(index + 1)))
 
 
@@ -122,36 +152,38 @@ def trim_object(path):
 
 
 def process_object(path):
+    global mapData
     sceneName = path.split(os.sep)[-2]
     print '正在处理{0}物件...'.format(sceneName)
     destPath = os.path.join(RES_PATH, 'obj-{0}'.format(multi_get_letter(sceneName)))
     force_directory(destPath)
     for dir in filter(lambda dir: os.path.isdir(os.path.join(path, dir)), os.listdir(path)):
         dirIndex = find_leading_num(dir)
-        for frameIndex, frameFile in enumerate(glob.glob(os.path.join(path, dir, '*.png'))):
-            destFile = os.path.join(destPath, '{0:04d}-{1:06d}.png'.format(dirIndex, frameIndex + 1))
+        files_grabbed = []
+        for files in ['*.tga', '*.png']:
+            files_grabbed.extend(glob.glob(os.path.join(path, dir, files)))
+        for frameIndex, frameFile in enumerate(files_grabbed):
+            destFile = os.path.join(destPath, '{0:04d}-{1:06d}{2}'.format(dirIndex, frameIndex + 1, frameFile[-4:]))
             shutil.copyfile(frameFile, destFile)
+            destFile = tga_to_png(destFile)
             trim_object(destFile)
             os.system("convert {0} +repage -crop 64x0 +repage {1}%02d-{2:06d}.png".format(destFile,
                 destFile[:-11], frameIndex + 1))
-            for file in glob.glob(os.path.join(destPath, "{0:04d}??-*.png".format(dirIndex))):
+            w, h, raw_width, raw_height, offset_x, offset_y = identify_image(destFile)
+            for i, file in enumerate(glob.glob(os.path.join(destPath, "{0:04d}??-*.png".format(dirIndex)))):
                 trim_image(file)
+                _, h1, _, _, _, oy = identify_image(file)
+                baseOffset = round(math.ceil((h - h1 - oy) / 32.0))
+                x, y = offset_x / 64 + i, (h + offset_y) / 32 - 1 - baseOffset
+                imageIndex = '{0}{1:02d}'.format(destFile.split(os.sep)[-1][:-11], i)
+                mapData["objects"][(x, y)] = (int(imageIndex), h - baseOffset * 32)
         put_images_into_folder(os.path.join(destPath, "{0:04d}??-*.png".format(dirIndex)))
 
 
 def process_map(path):
     process_tile(os.path.join(path, '地表'))
     process_object(os.path.join(path, '物件'))
-    sceneName = path.split(os.sep)[-1]
-    mapId = find_leading_num(sceneName)
-    generate_timap(sceneName, mapId)
-    generate_mmap(sceneName, mapId)
-    mapPath = os.path.join(RES_PATH, 'map')
-    if not os.path.exists(mapPath):
-        os.makedirs(mapPath)
-    mapName = os.path.join(mapPath, '__{0}.map'.format(multi_get_letter(sceneName)))
-    generate_map(sceneName, mapName)
-    compress_file(mapName)
+    generate_map()
 
 
 def process_scene(path):
@@ -189,11 +221,7 @@ def process_action(dirPath, fileNames, name, action, packName):
         shutil.copyfile(os.path.join(dirPath, fileName), destFile)
         if dirPath.split(os.sep)[-3] == '传世':
             continue
-        if destFile.endswith('.tga'):
-            pngFile = destFile.replace('.tga', '.png')
-            os.system('convert {0} {1}'.format(destFile, pngFile))
-            os.remove(destFile)
-            destFile = pngFile
+        destFile = tga_to_png(destFile)
         trim_image(destFile)
     return actionInfo
 
