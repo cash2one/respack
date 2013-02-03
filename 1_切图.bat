@@ -14,16 +14,20 @@ set /p SRCPATH=请输入源图所在目录(默认:%SRCPATH%)
 @echo 3.魔法
 @echo 4.武器
 @echo 5.角色
-@echo 6.全部
+@echo 6.ui
+@echo 7.timap_mmap
+@echo 8.全部
 @echo 0.转人工服务
-choice /c 1234560
+choice /c 123456780
 if %ERRORLEVEL% EQU 1 set RESTYPE=npc
 if %ERRORLEVEL% EQU 2 set RESTYPE=场景
 if %ERRORLEVEL% EQU 3 set RESTYPE=魔法
 if %ERRORLEVEL% EQU 4 set RESTYPE=武器
 if %ERRORLEVEL% EQU 5 set RESTYPE=角色
-if %ERRORLEVEL% EQU 6 goto all
-if %ERRORLEVEL% EQU 7 goto end
+if %ERRORLEVEL% EQU 6 set RESTYPE=ui
+if %ERRORLEVEL% EQU 7 set RESTYPE=timap_mmap
+if %ERRORLEVEL% EQU 8 goto all
+if %ERRORLEVEL% EQU 9 goto end
 @cutter.py %SRCPATH%\%RESTYPE%
 goto end
 :all
@@ -33,3 +37,4 @@ goto end
 @cutter.py %SRCPATH%\武器
 @cutter.py %SRCPATH%\角色
 :end
+pause

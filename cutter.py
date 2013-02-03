@@ -8,6 +8,7 @@ import math
 import winsound
 import multiprocessing as mp
 from collections import namedtuple, OrderedDict
+from distutils.dir_util import copy_tree
 import time
 import datetime
 from packer import pack_res
@@ -24,9 +25,9 @@ IGNORED_MAPS = ['99通用']
 #角色图包类型
 CHAR_TYPES = {'角色': 'human', '魔法': 'magic', '武器': 'weapon', 'npc': 'npc'}
 NmpFileHeader = namedtuple('NmpFileHeader', 'size version width height unknown')
+NmpFileHeader.struct_format = '4I16s'
 MapsHeader = namedtuple('MapsHeader', 'name width height version')
 MapsHeader.struct_format = '32s3I'
-NmpFileHeader.struct_format = '4I16s'
 mapData = {
     "name": "",
     "sceneName": "",
@@ -81,30 +82,35 @@ def generate_map():
                     f.write(struct.pack('I', mapData["objects"][(x, y)][1]))
     compress_file(mapPath)
 
-def generate_timap():
-    mapId = find_leading_num(mapData["sceneName"])
-    destPath = os.path.join(RES_PATH, 'timap', '{0:06d}'.format(mapId))
-    force_directory(destPath)
-    tileFile = os.path.join(RES_PATH, 'tile-{0}'.format(mapData["name"]), '01.png')
-    if not os.path.exists(tileFile):
+def resize_tilemap(srcFile, destFile, width, height):
+    if not os.path.exists(srcFile):
         return
-    width, height = mapData["width"] * 64, mapData["height"] * 32
-    ratio = width / 640
-    resize_param = 'x320' if height / ratio > 320 else '640'
-    os.system('convert.exe {0} -resize {1} {2}'.format(tileFile, resize_param, os.path.join(destPath, '000001.png')))
+    force_directory(os.path.dirname(destFile))
+    shutil.copyfile(srcFile, destFile)
+    imageWidth, imageHeight = get_size(destFile)
+    ratio = imageWidth / width
+    resize_param = 'x{}'.format(height) if imageHeight / ratio > height else str(width)
+    os.system('convert.exe {0} -resize {1} {2}'.format(destFile, resize_param, destFile))
 
-
-def generate_mmap():
-    mapId = find_leading_num(mapData["sceneName"])
-    destPath = os.path.join(RES_PATH, 'mmap', '{0:06d}'.format(mapId))
-    force_directory(destPath)
-    tileFile = os.path.join(RES_PATH, 'tile-{0}'.format(mapData["name"]), '01.png')
-    if not os.path.exists(tileFile):
+def generate_timap(path):
+    sceneName = path.split(os.sep)[-1]
+    if sceneName in IGNORED_MAPS:
         return
-    width, height = mapData["width"] * 64, mapData["height"] * 32
-    ratio = width / 800
-    resize_param = 'x600' if height / ratio > 600 else '800'
-    os.system('convert.exe {0} -resize {1} {2}'.format(tileFile, resize_param, os.path.join(destPath, '000001.png')))
+    print '正在生成timap,场景名：' + sceneName
+    srcFile = os.path.join(path, '地表', '整图.png')
+    mapId = find_leading_num(sceneName)
+    destFile = os.path.join(RES_PATH, 'timap', '{0:06d}'.format(mapId), '000001.png')
+    resize_tilemap(srcFile, destFile, 640, 320)
+
+def generate_mmap(path):
+    sceneName = path.split(os.sep)[-1]
+    if sceneName in IGNORED_MAPS:
+        return
+    print '正在生成mmap,场景名：' + sceneName
+    srcFile = os.path.join(path, '地表', '整图.png')
+    mapId = find_leading_num(sceneName)
+    destFile = os.path.join(RES_PATH, 'mmap', '{0:06d}'.format(mapId), '000001.png')
+    resize_tilemap(srcFile, destFile, 800, 600)
 
 
 def process_tile(path):
@@ -122,8 +128,6 @@ def process_tile(path):
         imageWidth, imageHeight = get_size(destFile)
         mapData["width"] = imageWidth / 64
         mapData["height"] = imageHeight / 32
-        generate_timap()
-        generate_mmap()
         os.system("convert {0} -crop 0x128 +repage {1}%02d.png".format(destFile, os.path.splitext(destFile)[0]))
         os.remove(destFile)
         for file in glob.glob(os.path.join(destPath, "{0:02d}??.png".format(index + 1))):
@@ -177,6 +181,7 @@ def process_object(path):
                 x, y = offset_x / 64 + i, (h + offset_y) / 32 - 1 - baseOffset
                 imageIndex = '{0}{1:02d}'.format(destFile.split(os.sep)[-1][:-11], i)
                 mapData["objects"][(x, y)] = (int(imageIndex), h - baseOffset * 32)
+            os.remove(destFile)
         put_images_into_folder(os.path.join(destPath, "{0:04d}??-*.png".format(dirIndex)))
 
 
@@ -184,6 +189,8 @@ def process_map(path):
     process_tile(os.path.join(path, '地表'))
     process_object(os.path.join(path, '物件'))
     generate_map()
+    generate_timap(path)
+    generate_mmap(path)
 
 
 def process_scene(path):
@@ -260,18 +267,19 @@ def export_per_file(path, personInfos):
                         f.write(struct.pack('I', imageIndex[0]))
                         f.write(struct.pack('H', imageIndex[1]))
 
+
 def useage():
-    print "Usage: cutter.py [场景|角色|魔法|武器|npc]"
+    print "Usage: cutter.py [场景|角色|魔法|武器|npc|ui|timap_mmap|c]"
 
 
 def main():
     if len(sys.argv) != 2:
         useage()
         exit(-1)
-    if not os.path.isdir(sys.argv[1]):
-        exit(-1)
     startTime = time.time()
     SRC_PATH, resType = sys.argv[1].rsplit(os.sep, 1)
+    if not os.path.isdir(SRC_PATH):
+        exit(-1)
     if resType == '场景':
         process_scene(os.path.join(SRC_PATH, resType))
         for dir in filter(lambda dir: os.path.isdir(os.path.join(RES_PATH, dir)) and
@@ -287,6 +295,13 @@ def main():
             export_per_file(perPath, personInfos)
             compress_file(perPath)
             pack_res(os.path.join(RES_PATH, CHAR_TYPES[resType]))
+    elif resType == 'ui':
+        copy_tree(os.path.join(SRC_PATH, '传世UI'), RES_PATH)
+    elif resType == 'timap_mmap':
+        SRC_PATH = os.path.join(SRC_PATH, '场景')
+        for dir in filter(lambda dir: os.path.isdir(os.path.join(SRC_PATH, dir)), os.listdir(SRC_PATH)):
+            generate_timap(os.path.join(SRC_PATH, dir))
+            generate_mmap(os.path.join(SRC_PATH, dir))
     else:
         useage()
     print '总共耗时：{0}'.format(datetime.timedelta(seconds=time.time() - startTime))
