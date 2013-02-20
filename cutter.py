@@ -128,14 +128,14 @@ def process_tile(path):
         imageWidth, imageHeight = get_size(destFile)
         mapData["width"] = imageWidth / 64
         mapData["height"] = imageHeight / 32
-        os.system("convert {0} -crop 0x128 +repage {1}%02d.png".format(destFile, os.path.splitext(destFile)[0]))
+        os.system("convert {0} -crop 0x{1} +repage {2}%02d.png".format(destFile, TILE_HEIGHT, os.path.splitext(destFile)[0]))
         os.remove(destFile)
         for file in glob.glob(os.path.join(destPath, "{0:02d}??.png".format(index + 1))):
-            os.system("convert {0} -crop 128x0 +repage  {1}%02d-000001.png".format(file, os.path.splitext(file)[0]))
+            os.system("convert {0} -crop {1}x0 +repage  {2}%02d-000001.png".format(file, TILE_WIDTH, os.path.splitext(file)[0]))
             os.remove(file)
         for file in glob.glob(os.path.join(destPath, "{0:02d}????-000001.png".format(index + 1))):
             imageIndex = os.path.basename(file)[:-11]
-            x, y = 2 * int(imageIndex[4:6]), 4 * int(imageIndex[2:4])
+            x, y = (TILE_WIDTH / 64) * int(imageIndex[4:6]), (TILE_HEIGHT / 32) * int(imageIndex[2:4])
             mapData["tiles"][(x, y)] = int(imageIndex)
         put_images_into_folder(os.path.join(destPath, "{0:02d}????-*.png".format(index + 1)))
 
