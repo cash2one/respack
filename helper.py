@@ -107,6 +107,11 @@ def force_directory(path):
     os.makedirs(path)
 
 
+def ensure_directory(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+
 def multi_get_letter(str_input):
     if isinstance(str_input, unicode):
         unicode_str = str_input

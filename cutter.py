@@ -82,35 +82,37 @@ def generate_map():
                     f.write(struct.pack('I', mapData["objects"][(x, y)][1]))
     compress_file(mapPath)
 
-def resize_tilemap(srcFile, destFile, width, height):
+
+def generate_smallmap(path, directory, width, height):
+    sceneName = path.split(os.sep)[-1]
+    if sceneName in IGNORED_MAPS:
+        return
+    srcFile = os.path.join(path, '地表', '整图.png')
     if not os.path.exists(srcFile):
         return
-    force_directory(os.path.dirname(destFile))
+    print '生成小地图到{0},场景名：{1}'.format(directory, sceneName)
+    mapId = find_leading_num(sceneName)
+    destFile = os.path.join(RES_PATH, directory, '{0:06d}'.format(mapId), '000001.png')
+    ensure_directory(os.path.dirname(destFile))
     shutil.copyfile(srcFile, destFile)
-    imageWidth, imageHeight = get_size(destFile)
-    ratio = imageWidth / width
-    resize_param = 'x{}'.format(height) if imageHeight / ratio > height else str(width)
-    os.system('convert.exe {0} -resize {1} {2}'.format(destFile, resize_param, destFile))
+    os.system('convert.exe {0} -resize {1}^>x{2}^> {0}'.format(destFile, width, height))
 
-def generate_timap(path):
+
+def generate_bmap(path, directory='bmap'):
     sceneName = path.split(os.sep)[-1]
     if sceneName in IGNORED_MAPS:
         return
-    print '正在生成timap,场景名：' + sceneName
+    print '生成小地图到{0},场景名：{1}'.format(directory, sceneName)
     srcFile = os.path.join(path, '地表', '整图.png')
-    mapId = find_leading_num(sceneName)
-    destFile = os.path.join(RES_PATH, 'timap', '{0:06d}'.format(mapId), '000001.png')
-    resize_tilemap(srcFile, destFile, 640, 320)
-
-def generate_mmap(path):
-    sceneName = path.split(os.sep)[-1]
-    if sceneName in IGNORED_MAPS:
+    if not os.path.exists(srcFile):
         return
-    print '正在生成mmap,场景名：' + sceneName
-    srcFile = os.path.join(path, '地表', '整图.png')
     mapId = find_leading_num(sceneName)
-    destFile = os.path.join(RES_PATH, 'mmap', '{0:06d}'.format(mapId), '000001.png')
-    resize_tilemap(srcFile, destFile, 800, 600)
+    destFile = os.path.join(RES_PATH, directory, '{0:06d}.png'.format(mapId))
+    ensure_directory(os.path.dirname(destFile))
+    shutil.copyfile(srcFile, destFile)
+    os.system('convert.exe {0} -resize 6.25%% {1}'.format(destFile, destFile))
+    os.system('convert {0} {1}'.format(destFile, destFile.replace(".png", ".jpg")))
+    os.remove(destFile)
 
 
 def process_tile(path):
@@ -189,8 +191,9 @@ def process_map(path):
     process_tile(os.path.join(path, '地表'))
     process_object(os.path.join(path, '物件'))
     generate_map()
-    generate_timap(path)
-    generate_mmap(path)
+    generate_smallmap(path, 'timap', 640, 320)
+    generate_smallmap(path, 'mmap', 640, 320)
+    generate_bmap(path)
 
 
 def process_scene(path):
@@ -300,8 +303,10 @@ def main():
     elif resType == 'timap_mmap':
         SRC_PATH = os.path.join(SRC_PATH, '场景')
         for dir in filter(lambda dir: os.path.isdir(os.path.join(SRC_PATH, dir)), os.listdir(SRC_PATH)):
-            generate_timap(os.path.join(SRC_PATH, dir))
-            generate_mmap(os.path.join(SRC_PATH, dir))
+            path = os.path.join(SRC_PATH, dir)
+            generate_smallmap(path, 'timap', 640, 320)
+            generate_smallmap(path, 'mmap', 640, 320)
+            generate_bmap(path)
     else:
         useage()
     print '总共耗时：{0}'.format(datetime.timedelta(seconds=time.time() - startTime))
