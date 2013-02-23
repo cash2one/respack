@@ -3,17 +3,33 @@ import os
 import sys
 import zipfile as zf
 import fnmatch as fn
-from helper import *
+import shutil
+import zlib
+import struct
+
+def compress_file(path):
+    if os.path.exists(path):
+        fileSize = os.path.getsize(path)
+        with open(path, 'rb') as originFile:
+            buffer = originFile.read()
+        if buffer[:4] != 'ZLIB':   
+            with open(path, 'wb') as compressedFile:
+                compressedFile.write(struct.pack('4s', 'ZLIB'))
+                compressedFile.write(struct.pack('I', fileSize))
+                compressedFile.write(zlib.compress(buffer))
+
+
+def force_directory(path):
+    if os.path.exists(path):
+        shutil.rmtree(path)
+    os.makedirs(path)
+
 
 #必须下载的文件们
-MUST_PRESENT_FILES = ['[!res]*.dll',
+MUST_PRESENT_FILES = ['*.dll',
                       'client2d.dat',
-                      'res/datas/*',
-                      'res/map/*.map',
-                      'res/tile-01xsc/*',
-                      'res/*.sgl',
-                      'res/*.dqi',
-                      'res/*.fnt'
+                      '*.exe',
+                      'res/*.dqo',
 ]
 
 def export_res(filename, dest):
