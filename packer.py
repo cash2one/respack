@@ -163,7 +163,7 @@ def pack_res(path):
         compress_file(os.path.join(path, "info.bin"))
 
 
-def pack_into_zip(path, exts=['.tex', '.bin', '.per', '.map']):
+def pack_into_zip(path, exts=['.tex', '.bin', '.per', '.map', '.jpg']):
     with zipfile.ZipFile(path, 'w') as reszip:
         for base, dirs, files in os.walk(RES_PATH):
             for file in files:
