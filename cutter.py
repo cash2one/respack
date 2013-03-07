@@ -219,7 +219,10 @@ def process_action(dirPath, fileNames, name, action, packName):
     for index, fileName in enumerate(fileNames):
         directIndex = int(fileName[:2])
         leading_num = find_leading_num(name)
-        imageIndex = '{0:03d}{1:03d}'.format(leading_num, actionIndex)
+        if len(str(leading_num)) == 6:
+            imageIndex = str(leading_num)
+        else:
+            imageIndex = '{0:03d}{1:03d}'.format(leading_num, actionIndex)
         if directIndex not in actionInfo.directs:
             actionInfo.directs[directIndex] = DirectionInfo(images=[])
         directInfo = actionInfo.directs[directIndex]
