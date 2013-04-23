@@ -187,4 +187,4 @@ def single_get_first(unicode1):
         return ''
 
 if __name__ == '__main__':
-    put_images_into_folder('src\\场景\\魔界\\物件\\*.png')
+    print multi_get_letter(u'04血路')

@@ -118,7 +118,7 @@ def generate_bmap(path, directory='bmap'):
 def process_tile(path):
     global mapData
     sceneName = path.split(os.sep)[-2]
-    mapName = multi_get_letter(sceneName)
+    mapName = multi_get_letter(sceneName.decode('gbk'))
     print '正在处理{0}地表...'.format(sceneName)
     mapData["name"] = mapName
     mapData["sceneName"] = sceneName
