@@ -7,12 +7,45 @@ import sys
 import math
 import winsound
 import multiprocessing as mp
+from multiprocessing.pool import Pool
 from collections import namedtuple, OrderedDict
 from distutils.dir_util import copy_tree
 import time
 import datetime
+import traceback
 from packer import pack_res
 from helper import *
+
+# Shortcut to multiprocessing's logger
+def error(msg, *args):
+    return mp.get_logger().error(msg, *args)
+
+class LogExceptions(object):
+    def __init__(self, callable):
+        self.__callable = callable
+        return
+
+    def __call__(self, *args, **kwargs):
+        try:
+            result = self.__callable(*args, **kwargs)
+
+        except Exception as e:
+            # Here we add some debugging help. If multiprocessing's
+            # debugging is on, it will arrange to log the traceback
+            error(traceback.format_exc())
+            # Re-raise the original exception so the Pool worker can
+            # clean up
+            raise
+
+        # It was fine, give a normal answer
+        return result
+    pass
+
+class LoggingPool(Pool):
+    def apply_async(self, func, args=(), kwds={}, callback=None):
+        return Pool.apply_async(self, LogExceptions(func), args, kwds, callback)
+
+mp.log_to_stderr()
 
 WOOOL_FLAG_BLOCK = 1
 WOOOL_FLAG_SMALLTILE = 2
@@ -116,6 +149,8 @@ def generate_bmap(path, directory='bmap'):
 
 
 def process_tile(path):
+    if not os.path.exists(path):
+        return
     global mapData
     sceneName = path.split(os.sep)[-2]
     mapName = multi_get_letter(sceneName.decode('gbk'))
@@ -158,6 +193,8 @@ def trim_object(path):
 
 
 def process_object(path):
+    if not os.path.exists(path):
+        return
     global mapData
     sceneName = path.split(os.sep)[-2]
     print '正在处理{0}物件...'.format(sceneName)
@@ -197,7 +234,7 @@ def process_map(path):
 
 
 def process_scene(path):
-    pool = mp.Pool(processes=MAX_PROCESS)
+    pool = LoggingPool(processes=MAX_PROCESS)
     for dir in filter(lambda dir: os.path.isdir(os.path.join(path, dir)), os.listdir(path)):
         pool.apply_async(process_map, (os.path.join(path, dir), ))
     pool.close()
