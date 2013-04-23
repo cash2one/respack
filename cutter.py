@@ -118,7 +118,7 @@ def generate_bmap(path, directory='bmap'):
 def process_tile(path):
     global mapData
     sceneName = path.split(os.sep)[-2]
-    mapName = multi_get_letter(sceneName)
+    mapName = multi_get_letter(sceneName.decode('gbk'))
     print '正在处理{0}地表...'.format(sceneName)
     mapData["name"] = mapName
     mapData["sceneName"] = sceneName
@@ -161,7 +161,7 @@ def process_object(path):
     global mapData
     sceneName = path.split(os.sep)[-2]
     print '正在处理{0}物件...'.format(sceneName)
-    destPath = os.path.join(RES_PATH, 'obj-{0}'.format(multi_get_letter(sceneName)))
+    destPath = os.path.join(RES_PATH, 'obj-{0}'.format(multi_get_letter(sceneName.decode('gbk'))))
     force_directory(destPath)
     for dir in filter(lambda dir: os.path.isdir(os.path.join(path, dir)), os.listdir(path)):
         dirIndex = find_leading_num(dir)
